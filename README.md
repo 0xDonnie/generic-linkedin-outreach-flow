@@ -25,19 +25,78 @@ You cloned this repo because you want to send cold outreach emails — to sell S
 One-time:
 - LIA (Legitimate Interest Assessment) from a privacy lawyer: €500-1500
 
-## How to use it
+## How to use it — new project
 
-```bash
-# 1. Clone into an empty directory
+```powershell
+# 1. Clone into an empty directory (one per product/campaign)
 cd D:\GitHub
-git clone <repo-url> my-outreach-campaign
+git clone https://github.com/0xDonnie/generic-coldmailing-flow.git my-outreach-campaign
 cd my-outreach-campaign
 
 # 2. Open Claude Code in that directory
+claude
 #    Claude reads CLAUDE.md automatically and starts the intake
 ```
 
 That's it. Claude will ask you 10 questions about your product / ICP / preferences, then execute the full setup autonomously. You intervene only when a browser action is needed (SaaS signup, DNS verification, etc.) — for those, Claude generates paste-ready prompts for the Claude Chrome Extension.
+
+## How to update the framework (for maintainers)
+
+When you improve a template, fix a bug, or add a new extension prompt:
+
+```powershell
+cd D:\GitHub\generic-coldmailing-flow
+# make your changes
+git add .
+git commit -m "short description of the change"
+git push
+```
+
+## How to pull framework updates into an existing project
+
+Projects already cloned from this framework have their own history diverged (customized email templates, tuned `.env`, accumulated data). To pull safely:
+
+```powershell
+cd D:\GitHub\my-outreach-campaign
+
+# Add upstream remote (one-time)
+git remote add upstream https://github.com/0xDonnie/generic-coldmailing-flow.git
+
+# Fetch latest framework changes
+git fetch upstream
+
+# Option A — safe: cherry-pick specific commits you want
+git log upstream/master --oneline    # see what's new
+git cherry-pick <commit-hash>        # apply just that change
+
+# Option B — merge (risk of conflicts with your customizations)
+git merge upstream/master --no-commit --no-ff
+# Review conflicts (your customized templates likely conflict — keep yours)
+# git commit when happy, or git merge --abort to back out
+```
+
+**Recommendation**: keep each project's customizations in a dedicated branch (e.g., `campaign-q2-2026`) so `master` stays aligned with the framework and you can `git pull upstream master` cleanly.
+
+## How to reuse this for a different product
+
+For each distinct product/vertical, clone the framework into its own directory:
+
+```powershell
+cd D:\GitHub
+
+# Project 1: compliance SaaS to crypto CASPs
+git clone https://github.com/0xDonnie/generic-coldmailing-flow.git ba-sales-crypto
+
+# Project 2: marketing services to B2B SaaS
+git clone https://github.com/0xDonnie/generic-coldmailing-flow.git agency-saas-outreach
+
+# Project 3: legal services to startups
+git clone https://github.com/0xDonnie/generic-coldmailing-flow.git legal-to-startups
+```
+
+Each has its own `.env`, its own `intake/answers.md`, its own database, its own CRM, its own outbound domains. Zero cross-contamination.
+
+
 
 ## Structure
 
