@@ -1,0 +1,60 @@
+node_modules/
+.env
+.env.local
+.env.*.local
+
+# Data outputs (may contain personal data — never commit)
+data/raw/**/*.csv
+data/raw/**/*.json
+data/enriched/**/*.csv
+data/enriched/**/*.json
+data/campaigns/sent/**
+data/campaigns/replies/**
+data/campaigns/conversions/**
+
+# Keep directory structure (user creates these at intake)
+!data/raw/.gitkeep
+!data/enriched/.gitkeep
+!data/campaigns/sent/.gitkeep
+!data/campaigns/replies/.gitkeep
+!data/campaigns/conversions/.gitkeep
+
+# Intake answers are user-specific — never commit (may contain secrets/PII)
+intake/answers.md
+intake/answers.*.md
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Browser state
+playwright-report/
+.playwright/
+test-results/
+
+# Wrangler state (deployed Worker metadata)
+unsubscribe-worker/.wrangler/
+unsubscribe-worker/node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Build
+dist/
+build/
+
+# Confidential legal documents — NEVER commit
+LIA*.docx
+LIA*.pdf
+LIA*.doc
+*.lia.md
+legal/signed/
+privacy-notice/generated/

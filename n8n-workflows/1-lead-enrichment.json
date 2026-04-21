@@ -1,0 +1,66 @@
+{
+  "name": "BL-076 / 1 — Lead Enrichment",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [ { "field": "hours", "hoursInterval": 6 } ] }
+      },
+      "name": "Cron (every 6h)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, company_name, company_website, contact_name, email FROM leads WHERE source IS NOT NULL AND (company_website IS NULL OR contact_name IS NULL) ORDER BY created_at DESC LIMIT 50;"
+      },
+      "name": "Postgres — fetch incomplete leads",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "credentials": { "postgres": { "id": "PG_CRED_ID", "name": "BA Postgres" } }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.hunter.io/v2/email-finder?domain={{$json[\"company_website\"]}}&api_key={{$env.HUNTER_IO_API_KEY}}",
+        "options": { "timeout": 15000 }
+      },
+      "name": "Hunter.io — find email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE leads SET email = COALESCE($1, email), source_confidence = $2, updated_at = NOW() WHERE id = $3;",
+        "additionalFields": { "queryParams": "={{$json.data.email}},={{$json.data.score}},={{$json.id}}" }
+      },
+      "name": "Postgres — update lead",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [900, 300],
+      "credentials": { "postgres": { "id": "PG_CRED_ID", "name": "BA Postgres" } }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO consent_log (lead_id, legal_basis, lia_ref) VALUES ($1, 'legitimate_interest', 'LIA-2026-04-v1') ON CONFLICT DO NOTHING;",
+        "additionalFields": { "queryParams": "={{$json.id}}" }
+      },
+      "name": "Postgres — log consent basis",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1120, 300],
+      "credentials": { "postgres": { "id": "PG_CRED_ID", "name": "BA Postgres" } }
+    }
+  ],
+  "connections": {
+    "Cron (every 6h)":              { "main": [[{ "node": "Postgres — fetch incomplete leads", "type": "main", "index": 0 }]] },
+    "Postgres — fetch incomplete leads": { "main": [[{ "node": "Hunter.io — find email", "type": "main", "index": 0 }]] },
+    "Hunter.io — find email":       { "main": [[{ "node": "Postgres — update lead", "type": "main", "index": 0 }]] },
+    "Postgres — update lead":       { "main": [[{ "node": "Postgres — log consent basis", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}

@@ -1,0 +1,17 @@
+name = "{{PROJECT_SLUG}}-unsubscribe"
+main = "src/worker.mjs"
+compatibility_date = "2026-04-15"
+
+# Bind a KV namespace for unsubscribe records.
+# Claude Code creates via: npx wrangler kv namespace create UNSUBSCRIBES
+# Then substitutes the returned id below.
+[[kv_namespaces]]
+binding = "UNSUBSCRIBES"
+id = "{{KV_NAMESPACE_ID}}"
+
+# Custom domain — set after deploying via UI or API.
+# Default: unsubscribe.{{PRIMARY_OUTBOUND_DOMAIN}}
+
+[vars]
+COMPANY_NAME = "{{SENDER_COMPANY_BRAND}}"
+DPO_EMAIL = "{{DPO_EMAIL}}"

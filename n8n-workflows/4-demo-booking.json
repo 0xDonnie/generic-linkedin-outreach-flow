@@ -1,0 +1,134 @@
+{
+  "name": "BL-076 / 4 — Demo Booking (Calendly webhook)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "calendly-booking",
+        "options": {}
+      },
+      "name": "Webhook — Calendly",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "ba-calendly-booking-v1"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Cal.com v2 webhook: data is under items[0].json.body\nconst root = items[0].json;\nconst body = root.body || root;\nconst triggerEvent = body.triggerEvent || body.eventType || '';\nconst p = body.payload || body;\nconst attendee = (p.attendees && p.attendees[0]) || p.invitee || {};\nreturn [{ json: {\n  triggerEvent,\n  email: (attendee.email || '').toLowerCase(),\n  name: attendee.name || '',\n  starts_at: p.startTime || p.start_time || (p.event && p.event.start_time) || '',\n  event_uri: p.uid || p.id || (p.event && (p.event.uri || p.event.id)) || '',\n  reschedule_uid: p.rescheduleUid || p.reschedule_uid || ''\n}}];"
+      },
+      "name": "Function — extract booking",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{$json.triggerEvent}}",
+        "rules": {
+          "rules": [
+            { "operation": "equal", "value2": "BOOKING_CREATED", "output": 0 },
+            { "operation": "equal", "value2": "BOOKING_CANCELLED", "output": 1 },
+            { "operation": "equal", "value2": "BOOKING_RESCHEDULED", "output": 2 }
+          ]
+        },
+        "fallbackOutput": 3
+      },
+      "name": "Switch — event type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=WITH lead AS (SELECT id FROM leads WHERE lower(email) = lower('{{$json.email}}') LIMIT 1) INSERT INTO demo_bookings (lead_id, demo_date, status, notes) SELECT lead.id, '{{$json.starts_at}}'::timestamptz, 'scheduled', 'event:{{$json.event_uri}}' FROM lead RETURNING id, lead_id;"
+      },
+      "name": "Postgres — INSERT created",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [900, 180]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=UPDATE demo_bookings SET status = 'cancelled' WHERE notes = 'event:{{$json.event_uri}}';"
+      },
+      "name": "Postgres — UPDATE cancelled",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [900, 320]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=UPDATE demo_bookings SET demo_date = '{{$json.starts_at}}'::timestamptz, status = 'scheduled' WHERE notes = 'event:{{$json.reschedule_uid || $json.event_uri}}';"
+      },
+      "name": "Postgres — UPDATE rescheduled",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [900, 460]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=UPDATE campaigns SET conversions = conversions + 1, updated_at = NOW() WHERE id = '{{$env.ACTIVE_CAMPAIGN_ID}}';"
+      },
+      "name": "Postgres — increment conversions",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1120, 180]
+    },
+    {
+      "parameters": {
+        "chatId": "-1003979139262",
+        "text": "=✅ New demo booked: {{$('Function — extract booking').item.json.name}} ({{$('Function — extract booking').item.json.email}}) on {{$('Function — extract booking').item.json.starts_at}}",
+        "additionalFields": { "parse_mode": "HTML" }
+      },
+      "name": "Telegram — notify booking",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1340, 180]
+    },
+    {
+      "parameters": {
+        "chatId": "-1003979139262",
+        "text": "=❌ Demo cancelled: {{$('Function — extract booking').item.json.name}} ({{$('Function — extract booking').item.json.email}}) — was scheduled for {{$('Function — extract booking').item.json.starts_at}}",
+        "additionalFields": { "parse_mode": "HTML" }
+      },
+      "name": "Telegram — notify cancellation",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1120, 320]
+    },
+    {
+      "parameters": {
+        "chatId": "-1003979139262",
+        "text": "=🔄 Demo rescheduled: {{$('Function — extract booking').item.json.name}} ({{$('Function — extract booking').item.json.email}}) — new slot: {{$('Function — extract booking').item.json.starts_at}}",
+        "additionalFields": { "parse_mode": "HTML" }
+      },
+      "name": "Telegram — notify reschedule",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1120, 460]
+    }
+  ],
+  "connections": {
+    "Webhook — Calendly": { "main": [[{ "node": "Function — extract booking", "type": "main", "index": 0 }]] },
+    "Function — extract booking": { "main": [[{ "node": "Switch — event type", "type": "main", "index": 0 }]] },
+    "Switch — event type": {
+      "main": [
+        [{ "node": "Postgres — INSERT created", "type": "main", "index": 0 }],
+        [{ "node": "Postgres — UPDATE cancelled", "type": "main", "index": 0 }],
+        [{ "node": "Postgres — UPDATE rescheduled", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Postgres — INSERT created": { "main": [[{ "node": "Postgres — increment conversions", "type": "main", "index": 0 }]] },
+    "Postgres — increment conversions": { "main": [[{ "node": "Telegram — notify booking", "type": "main", "index": 0 }]] },
+    "Postgres — UPDATE cancelled": { "main": [[{ "node": "Telegram — notify cancellation", "type": "main", "index": 0 }]] },
+    "Postgres — UPDATE rescheduled": { "main": [[{ "node": "Telegram — notify reschedule", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}

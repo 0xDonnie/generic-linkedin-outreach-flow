@@ -1,0 +1,86 @@
+{
+  "name": "BL-076 / 3 — Reply Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "protocol": "imap",
+        "options": { "allowUnauthorizedCerts": false, "customEmailConfig": "[\"UNSEEN\"]" }
+      },
+      "name": "IMAP — new replies",
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "credentials": { "imap": { "id": "IMAP_CRED_ID", "name": "BA Inbox" } }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Classify reply with simple keyword rules. Replace with LLM call later.\nconst body = (items[0].json.text || items[0].json.html || '').toLowerCase();\nconst from  = items[0].json.from?.value?.[0]?.address || '';\nconst inReplyTo = items[0].json.headers?.['in-reply-to'] || items[0].json.headers?.references || null;\n\nconst rules = [\n  { type: 'unsubscribe',  re: /\\b(unsubscribe|remove me|opt[- ]?out|stop emailing|do not contact)\\b/ },\n  { type: 'autoreply',    re: /\\b(out of office|ooo|on leave|annual leave|vacation|maternity|paternity)\\b/ },\n  { type: 'interested',   re: /\\b(interested|sounds good|let'?s chat|book|calendar|demo|call this week)\\b/ },\n  { type: 'objection',    re: /\\b(too expensive|price|budget|already use|happy with|not now|maybe later|next quarter)\\b/ },\n  { type: 'not_interested', re: /\\b(not interested|no thanks|pass|not a fit|not relevant)\\b/ },\n];\nlet reply_type = 'other';\nfor (const r of rules) if (r.re.test(body)) { reply_type = r.type; break; }\n\nconst sentiment = reply_type === 'interested' ? 'positive'\n  : reply_type === 'not_interested' || reply_type === 'unsubscribe' ? 'negative'\n  : 'neutral';\n\nreturn [{ json: { from, body, in_reply_to: inReplyTo, reply_type, sentiment } }];"
+      },
+      "name": "Function — classify reply",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH lead AS (SELECT id FROM leads WHERE lower(email) = lower($1)), email AS (SELECT id FROM campaign_emails WHERE message_id = $2) INSERT INTO email_replies (email_id, lead_id, reply_content, reply_type, sentiment) SELECT email.id, lead.id, $3, $4, $5 FROM lead LEFT JOIN email ON true RETURNING id, lead_id, reply_type;",
+        "additionalFields": { "queryParams": "={{$json.from}},={{$json.in_reply_to}},={{$json.body}},={{$json.reply_type}},={{$json.sentiment}}" }
+      },
+      "name": "Postgres — log reply",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [680, 300],
+      "credentials": { "postgres": { "id": "PG_CRED_ID", "name": "BA Postgres" } }
+    },
+    {
+      "parameters": {
+        "conditions": { "string": [ { "value1": "={{$json.reply_type}}", "operation": "equal", "value2": "unsubscribe" } ] }
+      },
+      "name": "IF unsubscribe",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO suppression_list (email, reason, source) VALUES ($1, 'unsubscribed', 'reply-handler') ON CONFLICT (lower(email)) WHERE email IS NOT NULL DO NOTHING;",
+        "additionalFields": { "queryParams": "={{$json.from}}" }
+      },
+      "name": "Postgres — add to suppression",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1120, 220],
+      "credentials": { "postgres": { "id": "PG_CRED_ID", "name": "BA Postgres" } }
+    },
+    {
+      "parameters": {
+        "conditions": { "string": [ { "value1": "={{$json.reply_type}}", "operation": "equal", "value2": "interested" } ] }
+      },
+      "name": "IF interested → notify human",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1120, 380]
+    },
+    {
+      "parameters": {
+        "channel": "#sales-replies",
+        "text": "=:rotating_light: Positive reply from {{$json.from}}\\n\\n>>> {{$json.body.slice(0,400)}}"
+      },
+      "name": "Slack — notify",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [1340, 380],
+      "credentials": { "slackApi": { "id": "SLACK_CRED_ID", "name": "BA Slack" } }
+    }
+  ],
+  "connections": {
+    "IMAP — new replies":     { "main": [[{ "node": "Function — classify reply", "type": "main", "index": 0 }]] },
+    "Function — classify reply": { "main": [[{ "node": "Postgres — log reply", "type": "main", "index": 0 }]] },
+    "Postgres — log reply":   { "main": [[{ "node": "IF unsubscribe", "type": "main", "index": 0 }, { "node": "IF interested → notify human", "type": "main", "index": 0 }]] },
+    "IF unsubscribe":         { "main": [[{ "node": "Postgres — add to suppression", "type": "main", "index": 0 }], []] },
+    "IF interested → notify human": { "main": [[{ "node": "Slack — notify", "type": "main", "index": 0 }], []] }
+  },
+  "settings": { "executionOrder": "v1" }
+}

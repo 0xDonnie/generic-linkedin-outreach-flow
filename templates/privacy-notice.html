@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Notice — {{SENDER_COMPANY_BRAND}}</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+         max-width: 760px; margin: 4vh auto 8vh; padding: 0 1.2rem; color: #222; }
+  @media (prefers-color-scheme: dark) { body { color: #ddd; background: #111; } }
+  h1 { font-size: 1.6rem; margin: 0 0 0.4rem; }
+  h2 { font-size: 1.15rem; margin: 2rem 0 0.6rem; border-bottom: 1px solid #ccc; padding-bottom: 0.2rem; }
+  .meta { color: #888; font-size: 0.9rem; margin-bottom: 2rem; }
+  ul { padding-left: 1.4rem; }
+  code, kbd { background: rgba(127,127,127,0.12); padding: 0.1em 0.4em; border-radius: 4px; font-size: 0.9em; }
+  a { color: #2962ff; }
+  @media (prefers-color-scheme: dark) { a { color: #82b1ff; } }
+</style>
+</head>
+<body>
+
+<h1>Privacy Notice — Outbound Marketing Communications</h1>
+<p class="meta">Effective: {{EFFECTIVE_DATE}} · Version {{VERSION}} · LIA reference: <code>{{LIA_REF}}</code></p>
+
+<p>This notice explains how <strong>{{COMPANY_LEGAL_NAME}}</strong>{{OPERATING_BRAND_CLAUSE}} ("we", "our") processes the personal data of professional contacts we reach out to as part of our B2B sales activity{{B2C_NOTE}}.</p>
+
+<h2>1. Who we are (Data Controller)</h2>
+<ul>
+  <li><strong>Legal name:</strong> {{COMPANY_LEGAL_NAME}}{{OPERATING_BRAND_CLAUSE}}</li>
+  <li><strong>Registered office:</strong> {{COMPANY_ADDRESS}}</li>
+  <li><strong>Data Protection Officer:</strong> <a href="mailto:{{DPO_EMAIL}}">{{DPO_EMAIL}}</a></li>
+</ul>
+
+<h2>2. What personal data we process</h2>
+<p>We process limited business-context personal data necessary to identify and contact you in your professional capacity:</p>
+<ul>
+  <li>Full name</li>
+  <li>Job title and seniority</li>
+  <li>Employer / company affiliation</li>
+  <li>Business email address</li>
+  <li>Public LinkedIn profile URL (where available)</li>
+  <li>Country of professional residence</li>
+</ul>
+<p>We do <strong>not</strong> process personal email addresses, home addresses, or personal phone numbers.</p>
+
+<h2>3. Where we get your data (sources)</h2>
+<p>Your data was sourced from one or more of the following:</p>
+<ul>
+  {{DATA_SOURCES_LIST}}
+</ul>
+<p>We do <strong>not</strong> scrape LinkedIn or any platform whose terms prohibit it.</p>
+
+<h2>4. Legal basis for processing</h2>
+<p>Our legal basis is <strong>{{LEGAL_BASIS_LABEL}}</strong> under Article 6(1)({{GDPR_LETTER}}) GDPR, as documented in our Legitimate Interest Assessment (LIA) referenced above. We have determined that:</p>
+<ul>
+  <li>We have a legitimate commercial interest in promoting our {{PRODUCT_CATEGORY}} to professionals in roles for which the product is directly relevant ({{ICP_ROLES}}).</li>
+  <li>Outreach is necessary because the target professionals do not typically subscribe to vendor mailing lists, and the product addresses {{RELEVANCE_JUSTIFICATION}}.</li>
+  <li>Your interests, rights, and freedoms are not overridden: we contact you on a business email, in your professional capacity, with a clear opt-out and no behavioural tracking.</li>
+</ul>
+<p>You retain the absolute right to object at any time (see Section 7).</p>
+
+<h2>5. What we do with your data</h2>
+<ul>
+  <li>We send up to 4 commercial emails to your business address (1 initial + 3 follow-ups across ~6 weeks), unless you reply or unsubscribe — in which case we stop immediately.</li>
+  <li>We log opens and clicks <strong>at the campaign level only</strong> (aggregate metrics) — we do not build personal behavioural profiles.</li>
+  <li>We use the data to qualify whether you may want a {{DEMO_LENGTH}}-minute product demonstration. If you book one, that conversation falls under a separate contractual basis.</li>
+</ul>
+
+<h2>6. How long we keep your data (retention)</h2>
+<ul>
+  <li><strong>Active outreach data:</strong> 24 months from last interaction, then deleted.</li>
+  <li><strong>Suppression list:</strong> permanent — once you unsubscribe, your address is retained <em>only</em> in the suppression list (not linked to enriched profile data) to ensure you are never contacted again.</li>
+  <li><strong>Aggregated campaign metrics:</strong> retained indefinitely in non-identifying form.</li>
+</ul>
+
+<h2>7. Your rights</h2>
+<p>Under the GDPR (and equivalent UK / UAE / Singapore data protection laws where applicable) you have the right to:</p>
+<ul>
+  <li><strong>Object</strong> to this processing — exercise via the one-click unsubscribe link in any email footer, or by emailing <a href="mailto:{{DPO_EMAIL}}">{{DPO_EMAIL}}</a>.</li>
+  <li><strong>Access</strong> the personal data we hold about you.</li>
+  <li><strong>Rectify</strong> inaccurate data.</li>
+  <li><strong>Erase</strong> your data (right to be forgotten).</li>
+  <li><strong>Restrict</strong> processing.</li>
+  <li><strong>Data portability</strong>.</li>
+  <li><strong>Lodge a complaint</strong> with your supervisory authority (in the EU: your national DPA; in the UK: ICO; in the UAE: ADGM DPC or DIFC Commissioner of Data Protection; in Singapore: PDPC).</li>
+</ul>
+<p>We respond to all requests within 30 days and provide proof of action taken.</p>
+
+<h2>8. Recipients of your data</h2>
+<p>We share your data with the following processors, all bound by GDPR-compliant Data Processing Agreements:</p>
+<ul>
+  {{PROCESSORS_LIST}}
+</ul>
+
+<h2>9. International transfers</h2>
+<p>Where data is transferred outside the European Economic Area (e.g., to US-based processors), we rely on Standard Contractual Clauses (SCCs) approved by the European Commission, as well as supplementary measures including encryption in transit and at rest.</p>
+
+<h2>10. Changes to this notice</h2>
+<p>We may update this notice from time to time. The "Effective" date at the top reflects the latest version. Material changes will be notified to active recipients before taking effect.</p>
+
+<h2>Contact</h2>
+<p>For any privacy-related question or to exercise your rights:<br>
+<strong>Data Protection Officer</strong> · <a href="mailto:{{DPO_EMAIL}}">{{DPO_EMAIL}}</a><br>
+<strong>{{COMPANY_LEGAL_NAME}}</strong> · {{COMPANY_ADDRESS}}{{OPERATING_BRAND_CLAUSE_FOOTER}}</p>
+
+</body>
+</html>
