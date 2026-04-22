@@ -58,7 +58,7 @@ Specifically:
 
 **Step 3** — Based on answers, populate `intake/answers.md` (create it) with the user's choices. This becomes the config source of truth for everything downstream. **Record the engine choice (heyreach vs linkedhelper) explicitly.**
 
-**Step 4** — Show a **checklist** of what you'll build (generated dynamically based on answers, including which LinkedIn engine). Get user "go" confirmation.
+**Step 4** — Show a **checklist** of what you'll build (generated dynamically based on answers, including: which LinkedIn engine, deployment mode, notification channel, transcription tool, dashboard choice `cli-only` vs `cli+metabase`). Get user "go" confirmation.
 
 **Step 5** — Execute the setup following `guides/claude-playbook.md`. Work autonomously, give progress updates every 5-10 min. Pause only when:
 - You need an API key / credential the user must generate in a browser

@@ -120,6 +120,16 @@ Options:
 - **Tactiq** — unlimited free ma Chrome ext only (Google Meet)
 - **Skip** — non interessato
 
+### 10b. Dashboard (quick)
+
+> "Per monitorare la campagna: `npm run kpi` in terminale c'è sempre. Vuoi anche la dashboard web visuale Metabase (richiede Docker)? — (a) solo CLI, (b) CLI + Metabase"
+
+Capture:
+- `cli-only` (default) → just the terminal command
+- `cli+metabase` → also spin up Metabase in Phase 7.5
+
+Default if user hesitates: **cli-only**. Easy to add Metabase later with `npm run dashboard:up`.
+
 ### 11. Sender identity
 
 > "Chi firma i messaggi? Voglio: nome, titolo/ruolo, URL profilo LinkedIn che userai, email privacy/DPO, URL calendario (Cal.com se esiste già)."
@@ -173,6 +183,7 @@ Compile `intake/answers.md` (Claude creates this) in this format:
 - Deployment: local | VPS   (VPS only valid for engine=heyreach)
 - Notifications: Telegram | Slack
 - Transcription: Otter | Tactiq | skip
+- Dashboard: cli-only | cli+metabase
 
 ## Sender
 - First name: ...

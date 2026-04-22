@@ -19,6 +19,7 @@ Volume: N connection requests/day target, N demos/month
 Deployment: local | VPS   (VPS valid only for established-account + HeyReach)
 Notifications: Telegram | Slack
 Transcription: Otter | Tactiq | skip
+Dashboard: cli-only | cli+metabase
 Sender: [name], [title], [company legal name, registered address]
 Sender LinkedIn URL: https://linkedin.com/in/... (existing | to-create)
 Privacy email: privacy@[domain]

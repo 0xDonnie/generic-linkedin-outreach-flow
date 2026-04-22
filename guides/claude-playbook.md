@@ -26,14 +26,21 @@ Phase numbering is engine-aware — some phases differ between Engine A (HeyReac
 4. `npm install` in root for Node.js dependencies
 5. Run `node --version` + `psql --version` + `git --version` to verify tooling present
 6. If `psql` missing → prompt user to install Postgres 17 (Windows installer link)
+7. **Install project-local Claude skills**: if `.claude/skills/kpi-dashboard/` does NOT exist yet, run:
+   ```powershell
+   New-Item -ItemType Directory -Force -Path .claude\skills | Out-Null
+   Copy-Item -Recurse -Force skills\* .claude\skills\
+   ```
+   This makes the `kpi-dashboard` skill invokable via the Skill tool in future sessions. No-op if already present.
 
-### Phase 1 — Database (10 min)
+### Phase 1 — Database + CLI dashboard available (10 min)
 
 1. Ask user for Postgres password (set during installation) — capture once
 2. `createdb <project_name>`
 3. Run `database/schema.sql`
 4. Verify tables exist via `\dt` — expect: leads, suppression_list, consent_log, campaigns, campaign_messages, li_replies, demo_bookings, rate_limit_log
 5. Insert the active campaign row and capture UUID into `.env` as `ACTIVE_CAMPAIGN_ID`
+6. **Run `npm run kpi`** once — will show empty funnel (zero leads), but confirms CLI dashboard works end-to-end against the DB + `.env`. Baseline check.
 
 ### Phase 2 — LinkedIn account readiness (varies by engine)
 
@@ -158,36 +165,29 @@ See `guides/linkedin-warmup-plan.md` for the day-by-day schedule. Summary:
 
 Claude updates `.env` rate caps weekly to enforce the ramp.
 
+### Phase 7.5 — Metabase dashboard (optional, 15 min)
+
+**CLI dashboard is already available since Phase 1** (`npm run kpi`). Metabase is the visual add-on — set up here if user chose `dashboard: cli+metabase` at intake.
+
+Skip entirely if user chose `dashboard: cli-only` at intake, or if Docker isn't installed.
+
+1. Verify Docker: `docker --version`. If missing, tell user to install Docker Desktop (Windows/Mac link) or apt-install (Ubuntu VPS).
+2. `npm run dashboard:up` — starts Metabase container on :3000, state persists in `dashboards/metabase/metabase-data/` (gitignored).
+3. Wait ~90 sec for first boot. Tail logs via `npm run dashboard:logs` until "Metabase Initialization COMPLETE".
+4. Give user `dashboards/metabase/setup.md` — it's 5 min of clicks (admin account + add Postgres datasource + paste 7 preset queries + arrange on dashboard). Claude cannot click through Metabase UI from outside the browser; don't try to walk through it in chat.
+5. VPS variant: Caddy reverse-proxy `dashboard.<domain>` → localhost:3000, set `METABASE_SITE_URL` env var, restart container.
+6. Confirm to user: dashboard live at http://localhost:3000 (or `https://dashboard.<domain>` on VPS).
+
+Note: Claude Code's `kpi-dashboard` skill was already installed in Phase 0 step 7 — it's invocable now for all analytics asks.
+
 ### Phase 13 — Production cron active
 
 ONCE Phase 11 (LIA) and Phase 12 warmup criteria are met:
-1. Activate n8n workflow 2 (LinkedIn Campaign) — enables the every-30-min cron
-2. Monitor daily via `npm run kpi` (see Phase 14)
-3. Telegram notifications fire on positive replies + demos booked
-4. Weekly: generate KPI report (open Metabase, take screenshot of dashboard, share)
-
-### Phase 14 — Dashboards (CLI + Metabase, 30 min)
-
-Technically optional, recommended before Phase 13 so user has visibility from day one.
-
-**Always-on: CLI**
-1. Run `npm run kpi` — instant terminal snapshot (funnel, today's caps, warmup, engine health, recent replies).
-2. No install needed beyond `npm install` in Phase 0. Already works.
-3. Document the command in user's handoff notes.
-
-**Optional: Metabase visual dashboard**
-1. Prerequisite: Docker Desktop (Windows/Mac) or Docker on VPS.
-2. `npm run dashboard:up` — starts Metabase container on :3000, state persists in `dashboards/metabase/metabase-data/`.
-3. Open http://localhost:3000 → user does first-run wizard (admin account + Postgres datasource). Give them `dashboards/metabase/setup.md` — don't walk through UI in chat.
-4. User pastes 7 preset queries from `dashboards/metabase/queries/*.sql` into Metabase as Native Queries.
-5. User arranges them on a dashboard named "LinkedIn Outreach KPIs".
-6. VPS variant: Caddy reverse-proxy `dashboard.<domain>` → localhost:3000, set `METABASE_SITE_URL` env var, restart.
-
-**Copy the project-local skill** (one-time, so Claude Code auto-invokes it on future sessions):
-```powershell
-Copy-Item -Recurse skills .claude\skills
-```
-After this, `skills/kpi-dashboard/SKILL.md` is loaded and Claude responds precisely to dashboard-related asks in subsequent sessions.
+1. Run `npm run kpi` — baseline before flipping the switch
+2. Activate n8n workflow 2 (LinkedIn Campaign) — enables the every-30-min cron
+3. Run `npm run kpi` again after 30-60 min — verify `rate_limit_log` is incrementing (sends actually firing)
+4. Telegram notifications fire on positive replies + demos booked
+5. Daily: `npm run kpi` for pulse check; weekly: open Metabase for trend review
 
 ## Progress tracking
 
