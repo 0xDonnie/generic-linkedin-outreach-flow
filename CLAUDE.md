@@ -148,6 +148,26 @@ On VPS (Ubuntu 24.04) — only for Engine A:
 - **`extension-prompts/heyreach-signup.md`** — for Engine A users
 - **`extension-prompts/linkedhelper-setup.md`** — for Engine B users
 - **`extension-prompts/linkedin-profile-optimization.md`** — mandatory before warmup, both engines
+- **`dashboards/README.md`** — overview of CLI (`npm run kpi`) and Metabase dashboards
+- **`dashboards/metabase/setup.md`** — step-by-step Metabase first-run
+- **`skills/kpi-dashboard/SKILL.md`** — project-local skill you load for all KPI/dashboard operations
+
+## Dashboard operations
+
+The pipeline ships with two dashboards: a CLI (`npm run kpi`) and a self-hosted Metabase. When the user asks about campaign performance — "come va?", "quanti invii oggi?", "acceptance rate", "mostra KPI", "dashboard", warmup state, engine health — **invoke the `kpi-dashboard` skill at `skills/kpi-dashboard/SKILL.md`**. That skill has the full decision logic (CLI vs Metabase vs direct SQL), thresholds, troubleshooting, and known schema fields.
+
+**One-time setup after clone**: copy `skills/` into `.claude/skills/` so Claude Code auto-loads the skill on startup:
+```powershell
+Copy-Item -Recurse skills .claude\skills
+```
+If this hasn't been done yet for this project, do it yourself silently the first time you need dashboard context — then the skill becomes invocable in future sessions via the Skill tool.
+
+Quick rules before the skill is loaded:
+- **"come va oggi?"** → `npm run kpi` and summarize the sections that matter (don't paste the whole output)
+- **"mostra grafico / trend / weekly review"** → `npm run dashboard:up` + point user to http://localhost:3000
+- **One specific number** → direct psql query; don't force Metabase for a one-off
+- **Acceptance rate < 12%** — proactively flag before ramping warmup; don't wait for user to notice
+- **Never auto-run `npm run kpi` more than once per ~5 min** — data won't have changed
 
 ## Golden rules summary
 

@@ -162,12 +162,32 @@ Claude updates `.env` rate caps weekly to enforce the ramp.
 
 ONCE Phase 11 (LIA) and Phase 12 warmup criteria are met:
 1. Activate n8n workflow 2 (LinkedIn Campaign) — enables the every-30-min cron
-2. Monitor daily via DB queries:
-   - connection acceptance rate (should be >15% or investigate targeting)
-   - reply rate (should be 5-15%)
-   - opt-out rate (should be <2%)
+2. Monitor daily via `npm run kpi` (see Phase 14)
 3. Telegram notifications fire on positive replies + demos booked
-4. Weekly: generate KPI report
+4. Weekly: generate KPI report (open Metabase, take screenshot of dashboard, share)
+
+### Phase 14 — Dashboards (CLI + Metabase, 30 min)
+
+Technically optional, recommended before Phase 13 so user has visibility from day one.
+
+**Always-on: CLI**
+1. Run `npm run kpi` — instant terminal snapshot (funnel, today's caps, warmup, engine health, recent replies).
+2. No install needed beyond `npm install` in Phase 0. Already works.
+3. Document the command in user's handoff notes.
+
+**Optional: Metabase visual dashboard**
+1. Prerequisite: Docker Desktop (Windows/Mac) or Docker on VPS.
+2. `npm run dashboard:up` — starts Metabase container on :3000, state persists in `dashboards/metabase/metabase-data/`.
+3. Open http://localhost:3000 → user does first-run wizard (admin account + Postgres datasource). Give them `dashboards/metabase/setup.md` — don't walk through UI in chat.
+4. User pastes 7 preset queries from `dashboards/metabase/queries/*.sql` into Metabase as Native Queries.
+5. User arranges them on a dashboard named "LinkedIn Outreach KPIs".
+6. VPS variant: Caddy reverse-proxy `dashboard.<domain>` → localhost:3000, set `METABASE_SITE_URL` env var, restart.
+
+**Copy the project-local skill** (one-time, so Claude Code auto-invokes it on future sessions):
+```powershell
+Copy-Item -Recurse skills .claude\skills
+```
+After this, `skills/kpi-dashboard/SKILL.md` is loaded and Claude responds precisely to dashboard-related asks in subsequent sessions.
 
 ## Progress tracking
 

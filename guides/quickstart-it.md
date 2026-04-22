@@ -82,6 +82,25 @@ Tempo setup infra: **3-4 ore** di cui Claude lavora ~2h, tu ~1h di browser.
 - Ti scrive template DM con il tuo prodotto già dentro
 - Impone rate limits LinkedIn (DAILY_LI_CONNECTION_LIMIT=20 ecc.) — non puoi superarli accidentalmente
 - Ramp up graduato dei limiti settimana per settimana
+- Setup della **dashboard** (CLI + Metabase opzionale) per controllare la campagna
+
+## Dashboard — come vedi cosa succede
+
+Due modi complementari (vedi `dashboards/README.md` per dettagli):
+
+**CLI — check veloce**
+```powershell
+npm run kpi
+```
+Stampa nel terminale: funnel (cold → connected → replied → demo), rate limits usati oggi, warmup day corrente, engine health (HeyReach/LinkedHelper raggiungibile), ultime 5 reply. Zero infra, 2 secondi.
+
+**Metabase — dashboard web visuale (opzionale, richiede Docker)**
+```powershell
+npm run dashboard:up   # avvia container su http://localhost:3000
+```
+Primo avvio: crei admin + connetti Postgres (~5 min clicks, guida in `dashboards/metabase/setup.md`). Poi incolli le 7 query preset (`dashboards/metabase/queries/`) e hai grafici con trend settimanali, breakdown reply, performance per template, ecc.
+
+Claude ha uno skill dedicato (`skills/kpi-dashboard/SKILL.md`) che si attiva quando dici "come va?", "mostra KPI", "dashboard", "quanti invii oggi?", ecc. — decide automaticamente CLI o Metabase.
 
 ## Cosa DOVRAI fare tu (no shortcuts)
 

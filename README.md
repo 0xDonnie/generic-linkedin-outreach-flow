@@ -16,6 +16,7 @@ You cloned this repo because you want to do cold outreach on LinkedIn — connec
 - Optional: Otter.ai auto-transcribes demo calls
 - Rate-limiting that respects LinkedIn caps (no ban risk beyond the inherent ToS risk)
 - Two engines you can pick at intake: **HeyReach** (cloud, for established accounts) or **LinkedHelper 2** (desktop Chrome, for new/burner accounts)
+- **Dashboards**: CLI (`npm run kpi`, 2 seconds in terminal) and Metabase (self-hosted visual dashboard, optional)
 
 ## Engines: which do I pick?
 
@@ -115,6 +116,14 @@ generic-linkedin-outreach-flow/
 │   ├── powershell/                     # Windows/PowerShell scripts
 │   └── bash/                           # VPS/bash scripts
 ├── n8n-workflows/                      # 4 core workflow JSONs
+├── dashboards/
+│   ├── README.md                       # Overview (CLI + Metabase)
+│   └── metabase/
+│       ├── docker-compose.yml          # Metabase container
+│       ├── setup.md                    # Step-by-step first-run
+│       └── queries/                    # 7 preset SQL dashboards
+├── skills/                             # Project-local Claude Code skills
+│   └── kpi-dashboard/SKILL.md          # Dashboard skill (copy to .claude/skills/)
 ├── extension-prompts/                  # Paste-ready Claude Chrome Extension prompts
 │   ├── heyreach-signup.md              # Engine A
 │   ├── linkedhelper-setup.md           # Engine B

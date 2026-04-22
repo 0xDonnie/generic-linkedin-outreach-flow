@@ -8,7 +8,11 @@
     "db:setup": "psql \"$DATABASE_URL\" -f database/schema.sql",
     "crm:load": "node scripts/node/load-crm.mjs",
     "li:test": "node scripts/node/test-linkedin-send.mjs",
-    "li:dry-run": "node scripts/node/test-linkedin-send.mjs --dry-run"
+    "li:dry-run": "node scripts/node/test-linkedin-send.mjs --dry-run",
+    "kpi": "node scripts/node/kpi.mjs",
+    "dashboard:up": "docker compose -f dashboards/metabase/docker-compose.yml up -d",
+    "dashboard:down": "docker compose -f dashboards/metabase/docker-compose.yml down",
+    "dashboard:logs": "docker compose -f dashboards/metabase/docker-compose.yml logs -f"
   },
   "dependencies": {
     "axios": "^1.7.0",

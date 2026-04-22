@@ -1,0 +1,40 @@
+# Metabase dashboard for generic-linkedin-outreach-flow
+#
+# Usage:
+#   npm run dashboard:up       -> docker compose -f dashboards/metabase/docker-compose.yml up -d
+#   npm run dashboard:down
+#   npm run dashboard:logs
+#
+# After bring-up:
+#   1. Open http://localhost:3000
+#   2. Create admin account (one-time)
+#   3. Add database connection:
+#      - Database type: PostgreSQL
+#      - Host: host.docker.internal  (Windows/Mac) OR your VPS Postgres IP
+#      - Port: 5432
+#      - Database name: <from your DATABASE_URL>
+#      - Username / Password: <from your DATABASE_URL>
+#      - SSL: no for local, yes for VPS
+#   4. Paste queries from dashboards/metabase/queries/ as "Native query" questions
+#   5. Pin questions to a dashboard named "LinkedIn Outreach KPIs"
+#
+# Metabase state (dashboards, users, preferences) persists in ./metabase-data/.
+# This volume is gitignored.
+
+services:
+  metabase:
+    image: metabase/metabase:v0.52.0
+    container_name: outreach-metabase
+    ports:
+      - "3000:3000"
+    environment:
+      MB_DB_FILE: /metabase-data/metabase.db
+      JAVA_TIMEZONE: ${METABASE_TZ:-Europe/Rome}
+      # For VPS behind Caddy: override with MB_SITE_URL=https://dashboard.yourdomain.com
+      MB_SITE_URL: ${METABASE_SITE_URL:-http://localhost:3000}
+    volumes:
+      - ./metabase-data:/metabase-data
+    restart: unless-stopped
+    # Allow reaching the host's Postgres (Windows/Mac docker desktop)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

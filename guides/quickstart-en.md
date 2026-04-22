@@ -82,6 +82,25 @@ Total infra setup time: **3-4 hours** (Claude works ~2h, you ~1h on browser stuf
 - Writes DM templates with your product baked in
 - Enforces LinkedIn rate limits (DAILY_LI_CONNECTION_LIMIT=20 etc.) — you can't accidentally exceed
 - Ramps caps week-by-week per warmup plan
+- Sets up the **dashboard** (CLI + optional Metabase) so you can see what's happening
+
+## Dashboard — how you watch the pipeline
+
+Two complementary views (see `dashboards/README.md`):
+
+**CLI — quick pulse**
+```powershell
+npm run kpi
+```
+Prints in terminal: funnel (cold → connected → replied → demo), today's rate-limit usage, current warmup day, engine health (HeyReach/LinkedHelper reachable), last 5 replies. Zero infra, 2 seconds.
+
+**Metabase — visual web dashboard (optional, requires Docker)**
+```powershell
+npm run dashboard:up   # starts container on http://localhost:3000
+```
+First boot: create admin + connect Postgres (~5 min of clicks, guide in `dashboards/metabase/setup.md`). Paste the 7 preset queries (`dashboards/metabase/queries/`) and you get weekly trends, reply breakdown, per-template performance, etc.
+
+Claude has a dedicated skill (`skills/kpi-dashboard/SKILL.md`) that kicks in when you say "how is it going?", "show KPIs", "dashboard", "how many today?", etc. — picks CLI or Metabase for you.
 
 ## What YOU must do (no shortcuts)
 

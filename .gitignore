@@ -40,6 +40,10 @@ linkedhelper-export/
 # HeyReach webhook secrets dumped during debugging
 heyreach-debug-*.json
 
+# Metabase persistent state (admin users, saved dashboards, encrypted datasource creds)
+dashboards/metabase/metabase-data/
+dashboards/metabase/.env
+
 # OS
 .DS_Store
 Thumbs.db
