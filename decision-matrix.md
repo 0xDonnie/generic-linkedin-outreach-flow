@@ -1,29 +1,56 @@
 # Decision Matrix
 
-> **For Claude**: during intake, use this matrix to pick defaults without asking the user. Only ask the user when the choice has real impact on their outcome.
+> **For Claude**: during intake, use this matrix to pick defaults without asking the user. Only ask when the choice has real impact on their outcome.
 
-## Deployment: Local vs VPS
+## Engine: HeyReach vs LinkedHelper 2
+
+**This is THE critical decision. Everything downstream branches on it. Ask at intake.**
+
+| Account characteristic | Engine |
+|---|---|
+| LinkedIn account ≥1 year old | **HeyReach** |
+| 500+ connections | **HeyReach** |
+| Has posting / activity history | **HeyReach** |
+| Real-name profile matches reality | **HeyReach** |
+| User wants 24/7 operation, PC off | **HeyReach** |
+| User has team or multi-account needs | **HeyReach** |
+| User has budget for $79+/mo | **HeyReach** |
+| LinkedIn account <3 months old | **LinkedHelper 2** |
+| New account created for this campaign | **LinkedHelper 2** |
+| User is prominent/has incongruent brand | **LinkedHelper 2** |
+| Burner account for pseudo-identity outreach | **LinkedHelper 2** |
+| Budget-constrained ($15-45/mo only) | **LinkedHelper 2** |
+| User OK with PC on during send windows | **LinkedHelper 2** |
+
+**Default if ambiguous**: ask the user directly. This is one of the 6 questions where user input is mandatory.
+
+**Tiebreakers**:
+- If user has both an old and new account and isn't sure which to use for this campaign: guide them to use the **old** account with HeyReach if the product fits their existing persona. Use the new account + LinkedHelper only when persona mismatch is real.
+- If user says "zero ban risk tolerance": neither engine is zero-risk. Suggest Sales Navigator + manual InMails (50/month included, no automation, no ban risk but low volume).
+
+## Deployment: Local vs VPS (Engine A only)
 
 | Condition | Choice | Why |
 |---|---|---|
-| User is solo founder, first campaign | **Local** | Validate before committing €54/year + complexity |
-| User has team of 2+ | **VPS** | Team can't access user's PC |
-| User wants "set and forget" from day 1 | **VPS** | Local needs PC on 24/7 |
-| User is budget-constrained ($0 extra) | **Local** | Save the €54/year |
-| User is non-technical and PC often off | **VPS** | Explain the PC-on-24/7 tradeoff |
-| Target >300 emails/day | **VPS** | Local + laptop hibernation = bad |
+| Engine B (LinkedHelper) | **Local** (forced) | Chrome ext cannot run on headless VPS |
+| Engine A, solo founder, first campaign | **Local** | Validate before committing €54/year + complexity |
+| Engine A, team of 2+ | **VPS** | Team can't access user's PC |
+| Engine A, "set and forget" | **VPS** | Local needs PC on 24/7 for n8n |
+| Engine A, budget $0 extra | **Local** | Save the €54/year |
+| Engine A, target >15 demos/month | **VPS** | Stability matters at scale |
 
-**Default if ambiguous**: Local. Migrate at month 2 after product-message-fit validated.
+**Default for Engine A, ambiguous**: Local. Migrate at month 2 after product-message-fit validated.
+**Default for Engine B**: Local is the only option.
 
 ## Notifications: Telegram vs Slack
 
 | Condition | Choice | Why |
 |---|---|---|
 | Solo founder | **Telegram** | Free forever, phone-native, zero setup |
-| Team ≥ 3 people | **Slack** (if they already use it) or Telegram | Team alignment |
+| Team ≥ 3 | **Slack** (if they use it) or Telegram | Team alignment |
 | User says "nessuno dei due" | Skip, log to DB only | Respect user's preference |
 
-**Default**: Telegram. Overwhelmingly less friction than Slack.
+**Default**: Telegram.
 
 ## Transcription: Otter vs Tactiq vs skip
 
@@ -31,78 +58,45 @@
 |---|---|---|
 | Target <20 demos/mo | **Otter free** | 300 min = 20×15min demos; automatic |
 | Target 20-60 demos/mo | **Otter free + Tactiq backup** | Stack free tiers |
-| Target >60 demos/mo | **Otter Pro $17/mo** (or skip transcription) | Otter free runs out |
-| User dislikes bots in calls | **Tactiq** | No bot in call, Chrome extension only |
-| User is privacy-hardline | **skip** | No 3rd-party transcripts |
+| Target >60 demos/mo | **Otter Pro $17/mo** | Otter free runs out |
+| User dislikes bots in calls | **Tactiq** | Chrome extension only, no bot |
+| Privacy-hardline user | **skip** | No 3rd-party transcripts |
 
-**Default**: Otter.ai free. 6x more generous than Fireflies free.
+**Default**: Otter.ai free.
 
-## SMTP provider: Brevo vs SendGrid vs Mailgun
-
-| Condition | Choice | Why |
-|---|---|---|
-| Default | **Brevo** | 300/day free, cold-email friendly ToS, €9/mo unlimited |
-| Already uses another provider | Keep theirs | Less friction |
-| High volume >1000/day production | **SendGrid Essentials $15/mo** | Better scaling |
-| Strict transactional reputation needed | **Postmark** (but they ban cold) | Not for our case |
-
-**Default**: Brevo free.
-
-## Domain registrar: Cloudflare vs Namecheap vs others
-
-| Condition | Choice | Why |
-|---|---|---|
-| Default | **Cloudflare Registrar** | At-cost pricing, API + Workers + Pages + Email Routing all free |
-| User already has domains elsewhere | Keep, just add DNS records | No forced migration |
-| User wants "one provider for everything" | **Cloudflare** | Domains + DNS + TLS + serverless + email routing in one bill |
-
-**Default**: Cloudflare. Always.
-
-## Domain count for outbound
-
-| Target emails/day | Domain count |
-|---|---|
-| 0-50/day | 1 dominio |
-| 50-150/day | 2-3 domini |
-| 150-500/day | 4-6 domini |
-| 500-1500/day | 7-10 domini |
-| >1500/day | 10+ + dedicated IPs |
-
-Rationale: each domain can sustain ~50-100 mail/day sustainably without reputation damage. Spread volume across domains.
-
-**Default for first campaign**: **3 domini**. Room to grow to 150/day without buying more; small enough to manage.
-
-## Lead data source: public registers vs Apollo only
+## Lead data source: Apollo only vs Apollo + register scraping
 
 | Condition | Strategy | Example |
 |---|---|---|
-| Regulated industry with public register | **Scrape registers + Apollo enrichment** | Crypto (ESMA/FCA/VARA/MAS), banking (BaFin, ACPR), pharma (EMA) |
-| Regulated industry NO public register | **Apollo only** + company name list from domain knowledge | Insurance brokers UK, chartered accountants IT |
-| Non-regulated B2B | **Apollo only** — search by industry + employee size + geography | SaaS buyers, agency owners, marketing managers |
-| B2C consumer | **Opt-in database purchase** or paid ads pivot | Newsletter subscriber list, affinity audience |
+| Regulated industry with public register | **Scrape registers + Apollo enrichment** | Crypto (ESMA/FCA/VARA/MAS), banking (BaFin) |
+| Non-regulated B2B | **Apollo only** — filter by LinkedIn URL presence | SaaS buyers, agency owners, CMOs |
+| B2C consumer | **Opt-in database purchase** or paid ads pivot (NOT LinkedIn) | Newsletter list, affinity audience |
 
-**Default for non-regulated B2B**: Apollo-only discovery. Minimum friction, battle-tested.
+**Default for non-regulated B2B**: Apollo-only discovery. Filter Apollo export to rows with `person_linkedin_url` populated.
 
-## Enrichment provider: Apollo vs Hunter vs both
+## Warmup duration (LinkedIn — differs from email!)
 
-| Condition | Choice |
+| Factor | Duration |
 |---|---|
-| Single-source, cheap | **Apollo only** (contains both people search + email reveal) |
-| Higher accuracy wanted | **Apollo (people discovery) + Hunter (email verification)** |
-| High volume | Both, pipeline |
+| New LinkedIn account (<3 months), any engine | **3-4 weeks** pre-outbound: profile + organic connections + content |
+| Established account, first use for outbound (Engine A) | **2 weeks**: profile polish + connection to 20 warm contacts + 2-3 posts |
+| Established account returning to outbound after pause >30 days | **1 week** re-ramp |
+| Established account, continuous outbound | **Ongoing at cruise rate** (no re-ramp needed) |
 
-**Default**: Apollo-only until volume justifies Hunter. Simpler.
+Warmup schedule details: `guides/linkedin-warmup-plan.md`.
 
-## Warmup duration
+**Default**: 2-week warmup for Engine A established accounts; 3-4 weeks mandatory for Engine B new accounts.
 
-| Factor | Adjustment |
-|---|---|
-| New outbound domain(s) | **3 weeks minimum** — non-negotiable |
-| Established domain being reused for outbound | **2 weeks** (short ramp) |
-| Returning to domain after pause >30 days | **1 week** warm-up re-ramp |
-| Very high volume target (>500/day) | **4 weeks** — gentler ramp |
+## Domain / infrastructure
 
-**Default**: 3-week standard warmup (see `docs/warmup-plan.md`).
+| Need | Choice | Why |
+|---|---|---|
+| Privacy notice hosting | **Cloudflare Pages** | Free, instant, HTTPS, custom domain |
+| Opt-out form | **Cloudflare Pages** (form POST → n8n webhook → suppression_list) | No worker needed |
+| Domain registrar | **Cloudflare Registrar** | At-cost pricing |
+| User already has domain | Keep, add CNAME to Pages | No forced migration |
+
+No outbound email domains needed. No DKIM/SPF/DMARC needed. Single landing-page domain is enough (e.g., `outreach.yourcompany.com` or a dedicated `yourcompany-privacy.com`).
 
 ## Template localization
 
@@ -110,26 +104,37 @@ Rationale: each domain can sustain ~50-100 mail/day sustainably without reputati
 |---|---|
 | Target audience all speaks English | English templates only |
 | Single non-English market | Single-language templates in target language |
-| Multi-lang market (rare) | Parallel templates per language, lead.country drives template selection |
+| Multi-lang market | Parallel templates per language, lead.country drives selection |
 
-**Default**: English templates even for EU/UAE targets. Compliance officers, CEOs, buyers are universally comfortable in English. Localize only if user explicitly requests.
+**Default**: English templates. LinkedIn users internationally default to English messaging.
 
 ## When to ask vs auto-pick
 
 **Ask the user** (meaningful choice):
-- B2B vs B2C (legal tree diverges)
+- **Engine (HeyReach vs LinkedHelper)** — ROUTING DECISION
+- B2B vs B2C (legal tree diverges + B2C on LinkedIn rarely works)
 - Geography (several downstream choices)
-- Target volume (sizing)
-- Deployment mode (cost + UX tradeoff)
+- Target volume / demos / month (sizing)
+- Deployment mode for Engine A (Local vs VPS)
 - Notification channel (personal preference)
 - Sender identity (branding)
 
 **Auto-pick** (use defaults, mention briefly):
-- SMTP provider (Brevo)
+- Lead source (Apollo)
 - Registrar (Cloudflare)
 - Transcription (Otter)
 - Database (Postgres)
 - Orchestration (n8n)
-- Worker hosting (Cloudflare)
+- Landing-page hosting (Cloudflare Pages)
 
-Rationale: choice for choice's sake loses the user. Curate defaults aggressively; give them power to override if they ask.
+Rationale: choice for choice's sake loses the user. Curate defaults aggressively; user can override if they ask.
+
+## Red flags — STOP and escalate to user
+
+During intake, if any of these come up, pause and get explicit user acknowledgment:
+
+- **B2C LinkedIn outreach in EU/UK**: not meaningfully different from B2C email under ePrivacy. Suggest pivot.
+- **User wants to bypass warmup**: refuse. Explain restriction curve.
+- **User wants LinkedHelper on a VPS**: technically possible with remote desktop but defeats the safety premise. Strongly discourage.
+- **User wants multiple LinkedIn accounts from one PC / IP**: LinkedIn detects this fast. Explain, suggest separate physical devices or accept risk.
+- **User wants to scrape arbitrary LinkedIn profiles**: out of scope. Not supported. Refer to ToS.

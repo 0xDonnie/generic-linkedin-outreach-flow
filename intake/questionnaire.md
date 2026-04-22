@@ -1,12 +1,12 @@
 # Intake Questionnaire
 
-> **For Claude**: Ask these questions conversationally, in groups of 2-3 — not all 10 at once. After the user answers all, compile `intake/answers.md` with their responses and show a generated checklist of what you'll build. Get "go" before executing.
+> **For Claude**: Ask these questions conversationally, in groups of 2-3 — not all at once. After the user answers all, compile `intake/answers.md` with their responses and show a generated checklist. Get "go" before executing.
 
-> **Tone**: friendly, decisive, Italian unless they're writing in English. Don't lecture. If a question's answer is obvious from context, skip it and state what you're assuming.
+> **Tone**: friendly, decisive, Italian unless they're writing in English. Don't lecture. If an answer is obvious from context, skip the question and state what you're assuming.
 
 ---
 
-## The 10 questions
+## The 11 questions
 
 ### 1. Product / service
 
@@ -14,39 +14,51 @@
 
 Capture:
 - Product name / brand
-- Category (SaaS / services / luxury goods / compliance tool / etc.)
+- Category (SaaS / services / consulting / compliance tool / etc.)
 - Main pain it solves
-- Average deal size (if user mentions) — helps size warmup pace later
+- Average deal size (if user mentions) — helps size volume expectations later
 
 ### 2. B2B or B2C
 
 > "Vendi ad aziende (B2B) o direttamente a consumatori privati (B2C)?"
 
-Critical for legal branch:
-- **B2B** → legitimate interest GDPR (Art. 6(1)(f)) works, standard flow
-- **B2C** → cold email to consumer emails in EU is BLOCKED by ePrivacy. Must use:
-  - (a) opt-in database purchase (legal in IT/FR/ES if provider attests opt-in)
-  - (b) skip EU consumers, target only US / UAE / non-ePrivacy countries
-  - (c) pivot to paid ads instead of cold email
+Critical for legal branch. Note: **LinkedIn is primarily a B2B channel**. If user says B2C:
+- LinkedIn is a bad channel for most B2C (consumers don't expect sales DMs on LinkedIn)
+- Legally, LinkedIn DMs to B2C in EU/UK are as restricted as emails under ePrivacy — channel change doesn't bypass consent requirements
+- Suggest user reconsider: paid ads, newsletter opt-in, platform-native channels (Instagram DMs for some products)
 
-If B2C, **explain this tradeoff to the user** before they answer Q3.
+Only proceed with B2C LinkedIn if user is selling something that has legitimate B2C-on-LinkedIn market (rare — coaching, career services, financial advisory to executives, luxury services to HNWIs) AND target is OUTSIDE EU/UK (US, UAE, etc.).
 
-### 3. Target ICP — job titles
+### 3. LinkedIn account status — ENGINE ROUTING
 
-> "Chi è la persona giusta da contattare dentro le aziende target?"
+> "Che LinkedIn account userai per questa campagna? (a) Un mio account consolidato, >=1 anno, >500 connessioni, con storico di post e attività; (b) Un account nuovo che creerò apposta, o recente (<3 mesi), o da zero."
+
+This determines which **engine** the framework configures:
+
+- **(a) Established account** → `LINKEDIN_ENGINE=heyreach`. Cloud SaaS, API-driven, PC off is fine. ~$79/mo.
+- **(b) New / burner account** → `LINKEDIN_ENGINE=linkedhelper`. Chrome extension running on user's PC, uses real session + real residential IP. Safer for fresh accounts but PC must be on during send windows. ~$15-45/mo.
+
+If user says "ho un account vecchio ma preferisco fare campagna con uno nuovo perché il mio brand attuale non matcha" → route to (b) and note the persona/brand mismatch as campaign context.
+
+If user is unsure → ask: "Il tuo profilo LinkedIn attuale sarebbe credibile come venditore di [prodotto]? Se il tuo titolo e la tua bio non sono coerenti con quello che vuoi vendere, crea un account nuovo."
+
+**Explain tradeoff briefly** before user commits, unless they already show strong preference.
+
+### 4. Target ICP — job titles
+
+> "Chi è la persona giusta da contattare? (ruolo / titolo)"
 
 Examples to give depending on product:
 - SaaS compliance → MLRO, Head of Compliance, CCO, DPO
-- Legal services → General Counsel, Head of Legal, CEO (small firms)
-- Marketing services → CMO, Head of Growth, Founder (startups)
-- Luxury goods B2B (retailers) → Buyer, Head of Procurement, CEO
-- Luxury goods B2C → ⚠️ return to Q2, this is B2C
+- Dev tools → CTO, VP Engineering, Head of Platform
+- Marketing services → CMO, Head of Growth, Founder
+- B2B SaaS to finance → CFO, VP Finance, FP&A lead
 
 Let user list 3-8 titles. If >8 it's too broad — ask to narrow.
 
-### 4. Target ICP — companies / industries
+### 5. Target ICP — companies / industries
 
-> "Che tipo di aziende? Dimmi: settore, dimensione (dipendenti), geografia."
+> "Che tipo di aziende? Settore, dimensione (dipendenti), geografia."
 
 Capture:
 - Industry / vertical
@@ -54,73 +66,79 @@ Capture:
 - Countries / regions
 - Any exclusions (e.g., "no competitors", "no public companies")
 
-If regulated industry (fintech crypto, pharma, gambling, aerospace):
-- Flag it — there are probably public registers we can scrape
-- Ask user: "Sai se c'è un registro pubblico del settore? Es. ESMA per crypto EU, FCA per fintech UK, CAA per aerospace, ecc."
+If regulated industry (crypto, pharma, gambling, aerospace):
+- Ask: "C'è un registro pubblico? Es. ESMA per crypto EU, FCA per fintech UK, CAA per aerospace"
+- If yes, we can scrape it + match on LinkedIn via Apollo for contact enrichment.
 
-### 5. Geography / jurisdictions
+### 6. Geography / jurisdictions
 
 > "In quali paesi / aree geografiche sono i tuoi target?"
 
-Capture top 5 countries. This determines:
-- Which data sources to use (EU registers vs UK vs US)
-- Which legal frameworks apply (GDPR, CCPA, PECR, PDPA)
+Capture top 5 countries. Determines:
+- Legal framework (GDPR+ePrivacy vs CASL vs CAN-SPAM vs UAE)
 - Time zones for send windows
-- Languages for template localization (if user wants multi-lang)
+- Languages for template localization (if user wants)
 
-### 6. Volume goal
+**LinkedIn-specific note**: LinkedIn presence is uneven by country. Strong in US/UK/DE/FR/NL/IT/SG/UAE/AU; weaker in JP/CN/RU (where local platforms dominate).
 
-> "Quante email vuoi mandare al giorno a regime? E quante demo / meeting vorresti prenotare al mese?"
+### 7. Volume goal
+
+> "Quante connection request + DM vuoi mandare al giorno a regime? E quante demo / meeting vorresti prenotare al mese?"
 
 Capture:
-- Target emails/day (guide: 50-500)
-- Target demos/month (guide: 20-100)
+- Target connection requests/day (guide: 15-25 per account, cap at 100/week)
+- Target demos/month (guide: 5-20 per single account)
 
 Use this to:
-- Choose SMTP provider tier (Brevo free 300/day vs paid)
-- Number of outbound domains (1-10)
-- Warmup duration (shorter for lower volume targets)
+- Confirm engine choice (if user wants >50 conn/day, they need multi-account → HeyReach + multi-seat plan)
+- Size warmup ramp
+- Set `DAILY_LI_CONNECTION_LIMIT` and `DAILY_LI_MESSAGE_LIMIT`
 
-### 7. Deployment mode
+**Reality check**: single LinkedIn account realistically produces ~5-10 demos/month at cruise. If user targets >20/month, they need 2-3 accounts. Set expectations.
 
-> "Local (gira sul tuo PC, semplice ma serve PC acceso 24/7 quando sei in campagna) o VPS (€4.50/mese Hetzner, gira sempre, accessibile da team)?"
+### 8. Deployment mode
 
-Default: **Local** for user's first campaign. Migration path to VPS is documented and takes 2-3 hours later.
+Skip this question if Engine B (LinkedHelper) — forced to Local.
 
-If user has team of 2+ → suggest VPS directly.
+For Engine A (HeyReach):
+> "Local (n8n gira sul tuo PC, semplice ma serve PC acceso quando vuoi che n8n orchestri) o VPS (€4.50/mese Hetzner, gira sempre, accessibile da team)? Nota: HeyReach stessa è sempre cloud, la scelta qui è solo per n8n."
 
-### 8. Notification channel
+Default: **Local** for first campaign. Migration path to VPS is documented.
+
+### 9. Notification channel
 
 > "Come vuoi ricevere notifiche di reply positive / demo prenotate? Telegram o Slack?"
 
-Default: **Telegram** (zero-setup, free forever, phone-friendly).
-Slack only if user already uses it as a team.
+Default: **Telegram**. Slack only if user already uses it as a team.
 
-### 9. Demo transcription
+### 10. Demo transcription
 
-> "Vuoi che le tue demo call siano auto-trascritte così hai summary + action items dopo ogni call? (Gratis)"
+> "Vuoi auto-trascrivere le demo call? (Gratis)"
 
 Options:
-- **Otter.ai** (default) — 300 min/mese free, auto-join via Google Calendar, email transcripts
-- **Tactiq** — unlimited free ma Chrome extension only (Google Meet), user clicks "Start" a ogni call
+- **Otter.ai** (default) — 300 min/mese free, auto-join via Google Calendar
+- **Tactiq** — unlimited free ma Chrome ext only (Google Meet)
 - **Skip** — non interessato
 
-### 10. Sender identity
+### 11. Sender identity
 
-> "Chi firma le email? Voglio: nome completo, titolo/ruolo, email di default (se ne hai già una)."
+> "Chi firma i messaggi? Voglio: nome, titolo/ruolo, URL profilo LinkedIn che userai, email privacy/DPO, URL calendario (Cal.com se esiste già)."
 
 Capture:
-- Sender first name (es. "Bob")
-- Sender full name (es. "Bob Natividad")
-- Sender title (es. "Head of Sales")
-- Company legal name (es. "Aletheia Tech LTD")
-- Registered address (es. "London, UK")
-- DPO / privacy contact email (es. "privacy@company.io")
+- Sender first name
+- Sender full name
+- Sender title
+- Company legal name
+- Registered address
+- DPO / privacy contact email
+- **LinkedIn profile URL (critical — engine drives this account)**
 - Calendar URL (Cal.com / Calendly if exists, else "da creare")
+
+If user chose Engine B and account doesn't exist yet → note this as a blocker. Setup order will be: create LinkedIn account → profile optimization → organic warmup (2-3 weeks) → THEN outbound infra.
 
 ---
 
-## After all 10 answered
+## After all answered
 
 Compile `intake/answers.md` (Claude creates this) in this format:
 
@@ -141,15 +159,20 @@ Compile `intake/answers.md` (Claude creates this) in this format:
 - Geography: [...]
 - Regulated industry: yes/no — registers available: [...]
 
+## LinkedIn account
+- Status: established | new
+- Engine: heyreach | linkedhelper
+- Sender profile URL: ... (existing | to-be-created)
+- Persona/brand note: [if applicable, why new account]
+
 ## Volume
-- Target emails/day: N
+- Target connection requests/day: N (cap 25)
 - Target demos/month: N
 
 ## Infrastructure choices
-- Deployment: local | VPS
+- Deployment: local | VPS   (VPS only valid for engine=heyreach)
 - Notifications: Telegram | Slack
 - Transcription: Otter | Tactiq | skip
-- Domain count: N (1-10)
 
 ## Sender
 - First name: ...
@@ -167,4 +190,4 @@ Compile `intake/answers.md` (Claude creates this) in this format:
 - LIA reference code: ...
 ```
 
-Then generate the execution checklist — see `guides/claude-playbook.md` for the full order of operations.
+Then generate the execution checklist — see `guides/claude-playbook.md` for the full order of operations. Engine choice flips several steps (HeyReach signup vs LinkedHelper install).

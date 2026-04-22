@@ -33,9 +33,12 @@ playwright-report/
 .playwright/
 test-results/
 
-# Wrangler state (deployed Worker metadata)
-unsubscribe-worker/.wrangler/
-unsubscribe-worker/node_modules/
+# LinkedHelper local state (Engine B) — may contain session cookies
+.linkedhelper/
+linkedhelper-export/
+
+# HeyReach webhook secrets dumped during debugging
+heyreach-debug-*.json
 
 # OS
 .DS_Store

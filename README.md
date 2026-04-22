@@ -1,51 +1,70 @@
-# Generic Cold-Mailing Flow
+# Generic LinkedIn Outreach Flow
 
-A **turnkey framework** to build a GDPR-compliant B2B / B2C cold email outbound pipeline from scratch, in 3-4 hours, for any product or service.
+A **turnkey framework** to build a LinkedIn cold outbound pipeline (connection requests + DMs + follow-ups + demo booking) from scratch, in 3-4 hours, for B2B SaaS / services / consulting / any offering that sells on LinkedIn.
+
+Sibling of [`generic-coldmailing-flow`](https://github.com/0xDonnie/generic-coldmailing-flow) (same architecture, email channel).
 
 ## What this is
 
-You cloned this repo because you want to send cold outreach emails — to sell SaaS, legal services, luxury goods, marketing services, compliance tooling, or whatever. Instead of stitching together 15 tools over 2 weeks, you get a working pipeline in one afternoon.
+You cloned this repo because you want to do cold outreach on LinkedIn — connection requests, DMs, follow-ups, book demos. Instead of manually running browser extensions and guessing rate limits, you get a working pipeline with a real CRM, rate-limited queues, reply detection, and demo booking integration.
 
 **What you get at the end**:
-- A PostgreSQL CRM with your ICP leads enriched and ready
-- An automated email campaign that sends, tracks replies, handles unsubscribes
+- A PostgreSQL CRM with your ICP leads enriched (Apollo → LinkedIn URLs)
+- An automated LinkedIn campaign that sends connection requests + DMs + follow-ups
+- Reply detection that routes positive replies to Telegram
 - Inbound booking flow via Cal.com that auto-logs demos
-- Real-time Telegram notifications for positive replies
-- Optional: Otter.ai auto-transcribes demo calls, saves to CRM
-- Optional: deployed on a €4.50/mo VPS for 24/7 operation
+- Optional: Otter.ai auto-transcribes demo calls
+- Rate-limiting that respects LinkedIn caps (no ban risk beyond the inherent ToS risk)
+- Two engines you can pick at intake: **HeyReach** (cloud, for established accounts) or **LinkedHelper 2** (desktop Chrome, for new/burner accounts)
 
-**What it costs** (monthly, after setup):
-- Apollo.io Basic: $49 (lead discovery + emails)
-- Hunter.io Starter: $49 (email verification, optional)
-- Brevo Free: $0 (300 emails/day — upgrade $9 for unlimited)
-- 5 domains on Cloudflare: ~$5 (annual amortized)
-- Hetzner VPS (optional): €4.50
-- **Total: $60-120/month** depending on choices
+## Engines: which do I pick?
+
+| | **Engine A: HeyReach** | **Engine B: LinkedHelper 2** |
+|---|---|---|
+| Best for | Established account (>=1y, 500+ connections) | New / burner account |
+| How it works | Cloud SaaS with API | Chrome extension on your PC |
+| Cost | ~$79/mo | ~$15-45/mo |
+| Ban risk | Medium | Lower (but not zero) |
+| Requires PC on | No (cloud) | Yes (local execution) |
+| n8n integration | Native API | Webhook |
+| Max throughput | ~25 conn/day + ~50 msg/day | ~20 conn/day + ~40 msg/day |
+| Multi-account | Yes | No (one Chrome profile per account) |
+
+**Quick decision**: if you have a credible LinkedIn account with history, go HeyReach. If you're building a new account (because your real identity doesn't fit the pitch, or you don't want sales DMs on your main profile), go LinkedHelper.
+
+The framework asks you this at intake and routes downstream config accordingly.
+
+## What it costs (monthly, after setup)
+
+- **Engine A (HeyReach)**: $79-149/mo
+- **Engine B (LinkedHelper 2)**: $15-45/mo
+- Apollo.io Basic: $49/mo (lead discovery + LinkedIn URLs)
+- Hetzner VPS (optional, Engine A only): €4.50/mo
+- Cloudflare (domain + Pages for privacy notice): ~$1/mo amortized
+- **Total: $65-200/mo** depending on engine + VPS choice
 
 One-time:
-- LIA (Legitimate Interest Assessment) from a privacy lawyer: €500-1500
+- LIA (Legitimate Interest Assessment) from a privacy lawyer: €500-1500 (if targeting EU/UK residents)
 
 ## How to use it — new project
 
 ```powershell
 # 1. Clone into an empty directory (one per product/campaign)
 cd D:\GitHub
-git clone https://github.com/0xDonnie/generic-coldmailing-flow.git my-outreach-campaign
-cd my-outreach-campaign
+git clone https://github.com/0xDonnie/generic-linkedin-outreach-flow.git my-li-campaign
+cd my-li-campaign
 
 # 2. Open Claude Code in that directory
 claude
 #    Claude reads CLAUDE.md automatically and starts the intake
 ```
 
-That's it. Claude will ask you 10 questions about your product / ICP / preferences, then execute the full setup autonomously. You intervene only when a browser action is needed (SaaS signup, DNS verification, etc.) — for those, Claude generates paste-ready prompts for the Claude Chrome Extension.
+That's it. Claude asks ~10 questions about your product / ICP / LinkedIn account status / preferences, then executes the setup. You intervene only for things that require a browser (HeyReach signup, LinkedIn account creation for Engine B, Cal.com setup, LIA drafting). For those, Claude generates paste-ready prompts for the Claude Chrome Extension.
 
 ## How to update the framework (for maintainers)
 
-When you improve a template, fix a bug, or add a new extension prompt:
-
 ```powershell
-cd D:\GitHub\generic-coldmailing-flow
+cd D:\GitHub\generic-linkedin-outreach-flow
 # make your changes
 git add .
 git commit -m "short description of the change"
@@ -54,133 +73,122 @@ git push
 
 ## How to pull framework updates into an existing project
 
-Projects already cloned from this framework have their own history diverged (customized email templates, tuned `.env`, accumulated data). To pull safely:
+Same pattern as the email sibling: projects already cloned have their own diverged history (customized templates, tuned `.env`). To pull safely:
 
 ```powershell
-cd D:\GitHub\my-outreach-campaign
+cd D:\GitHub\my-li-campaign
 
 # Add upstream remote (one-time)
-git remote add upstream https://github.com/0xDonnie/generic-coldmailing-flow.git
+git remote add upstream https://github.com/0xDonnie/generic-linkedin-outreach-flow.git
 
-# Fetch latest framework changes
 git fetch upstream
 
-# Option A — safe: cherry-pick specific commits you want
-git log upstream/master --oneline    # see what's new
-git cherry-pick <commit-hash>        # apply just that change
-
-# Option B — merge (risk of conflicts with your customizations)
-git merge upstream/master --no-commit --no-ff
-# Review conflicts (your customized templates likely conflict — keep yours)
-# git commit when happy, or git merge --abort to back out
+# Safer: cherry-pick specific commits
+git log upstream/master --oneline
+git cherry-pick <commit-hash>
 ```
 
-**Recommendation**: keep each project's customizations in a dedicated branch (e.g., `campaign-q2-2026`) so `master` stays aligned with the framework and you can `git pull upstream master` cleanly.
+## How to reuse for a different product
 
-## How to reuse this for a different product
-
-For each distinct product/vertical, clone the framework into its own directory:
-
-```powershell
-cd D:\GitHub
-
-# Project 1: compliance SaaS to crypto CASPs
-git clone https://github.com/0xDonnie/generic-coldmailing-flow.git ba-sales-crypto
-
-# Project 2: marketing services to B2B SaaS
-git clone https://github.com/0xDonnie/generic-coldmailing-flow.git agency-saas-outreach
-
-# Project 3: legal services to startups
-git clone https://github.com/0xDonnie/generic-coldmailing-flow.git legal-to-startups
-```
-
-Each has its own `.env`, its own `intake/answers.md`, its own database, its own CRM, its own outbound domains. Zero cross-contamination.
-
-
+Clone into its own directory per product/vertical. Zero cross-contamination between campaigns (each has its own `.env`, intake answers, database, CRM).
 
 ## Structure
 
 ```
-generic-coldmailing-flow/
-├── CLAUDE.md                    # Instructions for Claude Code (auto-read)
-├── INTAKE.md                    # First-touch questionnaire
-├── decision-matrix.md           # Helps Claude pick options based on your context
+generic-linkedin-outreach-flow/
+├── CLAUDE.md                           # Instructions for Claude Code (auto-read)
+├── INTAKE.md                           # First-touch notes
+├── decision-matrix.md                  # Engine + deployment decision rules
 ├── intake/
-│   └── questionnaire.md         # The 10 intake questions
+│   └── questionnaire.md                # The intake questions (incl. account-status gate)
 ├── guides/
-│   ├── quickstart-it.md         # Human-facing quick guide (Italian)
-│   ├── quickstart-en.md         # Human-facing quick guide (English)
-│   ├── detailed-guide-en.md     # Full walkthrough
-│   └── claude-playbook.md       # Claude's execution playbook
+│   ├── quickstart-it.md                # Human-facing guide (Italian)
+│   ├── quickstart-en.md                # Human-facing guide (English)
+│   ├── linkedin-warmup-plan.md         # Connection warmup schedule (per-engine)
+│   └── claude-playbook.md              # Claude's execution playbook
 ├── templates/
-│   ├── email-templates/         # Parameterized email templates
-│   └── privacy-notice.html      # GDPR privacy notice template
+│   ├── linkedin-templates/             # DM + connection-note templates
+│   └── privacy-notice.html             # GDPR privacy notice (reused)
 ├── database/
-│   └── schema.sql               # Generic CRM schema
+│   └── schema.sql                      # CRM schema (campaign_messages, li_replies)
 ├── scripts/
-│   ├── powershell/              # Windows/PowerShell scripts
-│   └── bash/                    # VPS/bash scripts
-├── n8n-workflows/               # 4 core workflow JSONs
-├── unsubscribe-worker/          # Cloudflare Worker for one-click unsubscribe
-├── extension-prompts/           # Ready-to-paste Claude Chrome Extension prompts
+│   ├── powershell/                     # Windows/PowerShell scripts
+│   └── bash/                           # VPS/bash scripts
+├── n8n-workflows/                      # 4 core workflow JSONs
+├── extension-prompts/                  # Paste-ready Claude Chrome Extension prompts
+│   ├── heyreach-signup.md              # Engine A
+│   ├── linkedhelper-setup.md           # Engine B
+│   ├── linkedin-profile-optimization.md
+│   ├── apollo-people-search.md         # ICP discovery
+│   └── ... (cal.com, telegram, otter, cloudflare-domain)
 ├── legal/
-│   ├── lia-template.md          # Legitimate Interest Assessment template
+│   ├── lia-template-linkedin.md        # LIA template (LinkedIn-specific wording)
+│   ├── linkedin-tos-risk.md            # Honest ToS risk summary — show user at intake
 │   └── compliance-by-jurisdiction.md
 └── docs/
-    ├── vps-setup.md
-    ├── local-setup.md
-    ├── warmup-plan.md
+    ├── vps-setup.md                    # Engine A + VPS
+    ├── local-setup.md                  # Either engine, local mode
     ├── apollo-icp-brainstorm.md
     └── troubleshooting.md
 ```
 
 ## Design choices
 
-**Why PowerShell (not Bash)?** Most users are on Windows. If you're on Mac, tell Claude at intake; it'll translate commands.
+**Why two engines (not one)?** LinkedIn account credibility varies enormously. A 10-year account with 2000 connections can run cloud automation (HeyReach) safely. A brand-new account cannot — it gets flagged in days. Forcing one engine on both = one will suffer. So we branch.
 
-**Why Brevo (not SendGrid/Mailgun)?** Generous free tier (300/day) with proper DKIM, cold email friendly ToS, cheap upgrade path (€9/mo unlimited).
+**Why HeyReach for established accounts?** Best API + webhook support for n8n integration. Multi-account if you scale. Moderate ban risk because cloud IP is not residential (mitigated by their humanized delays + warmup logic).
 
-**Why Cloudflare (not Namecheap)?** At-cost domain registration + free edge services (Workers, Pages, Email Routing) + API-first. Other registrars work but add friction.
+**Why LinkedHelper for new accounts?** Runs in user's actual Chrome, uses user's real residential IP, uses the real LinkedIn session cookie. From LinkedIn's perspective, activity is indistinguishable from manual. Slower, cheaper, and much lower ban risk on fresh accounts. Tradeoff: PC must be on.
 
-**Why Telegram (not Slack)?** Free forever, zero workspace setup, works on phone without app setup. Slack is better for teams of 5+; Telegram wins for single founders.
+**Why not Phantombuster / Expandi / Dripify / Waalaxy / Meet Alfred?** All viable, but: Phantombuster's raw scrapers are riskier than session-based tools; Expandi is pricier than HeyReach with similar feature set; Dripify has weaker API; Waalaxy and Meet Alfred are fine for manual use but worse for n8n orchestration. HeyReach + LinkedHelper cover the two genuine use cases at good cost.
 
-**Why Otter.ai (not Fireflies)?** Fireflies free tier is 3 meetings/month (useless). Otter free is 300 min/month (~20 demos). Better default.
+**Why Apollo.io (not Lusha/Cognism)?** Provides LinkedIn URLs alongside emails/phones in one search. Best value-per-credit for EU mid-market.
 
-**Why Apollo.io (not Lusha/Cognism)?** Best value-per-credit for EU mid-market + decent API. Lusha and Cognism have stricter anti-scraping ToS that break more workflows.
+**Why Cal.com (not Calendly)?** Open-source, self-hostable, generous free tier, cleaner webhooks.
 
-**Why n8n (not Zapier/Make)?** Self-hostable (data stays on your infra), flexible workflow editor, free community edition, good for the 4 workflows we need.
+**Why Telegram (not Slack)?** Free forever, zero workspace setup, phone-native. Slack only for teams of 3+.
+
+**Why Otter.ai (not Fireflies)?** Fireflies free tier = 3 meetings/month (useless). Otter free = 300 min/month.
+
+**Why n8n (not Zapier/Make)?** Self-hostable, flexible, free community edition. Data stays on your infra.
+
+**Why PostgreSQL?** Overkill for 500 leads, right-sized for 50,000+. Cheap to scale. Well-supported by n8n.
 
 ## Legal posture
 
-**Cold email is legal in most jurisdictions for B2B**, marginal for B2C. Specifically:
+**LinkedIn cold messaging is NOT a GDPR escape.** ePrivacy Directive art. 13 treats DMs as "electronic communications" — same rules as email for B2C. Channel change doesn't change the law.
 
-| Jurisdiction | B2B cold | B2C cold |
+For **B2B**, legitimate interest (GDPR Art. 6(1)(f)) generally covers LinkedIn outreach identically to email. You still need:
+
+1. A **signed LIA** (Legitimate Interest Assessment) — template: `legal/lia-template-linkedin.md`
+2. A **public privacy notice** — template: `templates/privacy-notice.html`, host on Cloudflare Pages
+3. A **suppression list** honored forever — schema: `database/schema.sql`
+4. An **opt-out mechanism** — "reply STOP" in DMs + public opt-out page
+
+| Jurisdiction | B2B LinkedIn | B2C LinkedIn |
 |---|---|---|
-| Italy | ✅ legitimate interest | ⚠️ requires opt-in (ePrivacy) |
-| UAE | ✅ allowed | ✅ allowed |
+| Italy | ✅ legitimate interest | ⚠️ opt-in required (ePrivacy) |
 | UK | ✅ legitimate interest | ⚠️ soft-opt-in needed (PECR) |
 | EU (other) | ✅ legitimate interest | ⚠️ opt-in (ePrivacy) |
-| US | ✅ CAN-SPAM | ✅ CAN-SPAM |
-| Canada | ⚠️ CASL strict | ❌ needs prior consent |
+| US | ✅ (no federal cold-DM restriction) | ✅ |
+| Canada | ⚠️ CASL applies to electronic comms | ❌ CASL needs prior consent |
+| UAE | ✅ allowed | ✅ allowed |
 
-You **must** have:
-1. A **signed LIA** (Legitimate Interest Assessment) from a privacy lawyer (template: `legal/lia-template.md`)
-2. A **public privacy notice** (template: `templates/privacy-notice.html`)
-3. **One-click unsubscribe** in every email (implemented: `unsubscribe-worker/`)
-4. A **suppression list** that's honored forever (schema: `database/schema.sql`)
+**ToS risk is a separate axis**. See `legal/linkedin-tos-risk.md`. Both engines technically violate LinkedIn ToS to some degree. LinkedHelper's risk is structurally lower (real session, real IP). Accept the risk or use Sales Navigator + manual InMails (50/month included, no automation).
 
-Claude Code will enforce these during setup. Don't try to skip them — not negotiable.
+Claude Code will enforce all four points above during setup. Don't try to skip them.
 
 ## First campaign time estimate
 
-From clone to first warmup email:
+From clone to first outbound:
 - Intake + setup (Claude does most): **2-4 hours**
-- LIA with lawyer (external): **1-2 weeks** (parallel, not blocking warmup)
-- Warmup ramp: **3 weeks** (5 → 50 emails/day gradually)
-- Full production: **~4 weeks from clone**
+- LIA with lawyer (external, parallel): **1-2 weeks** (not blocking warmup)
+- Profile optimization + organic warmup: **1-2 weeks** (mandatory, stronger for new accounts)
+- Outbound ramp: **2-3 weeks** (5 → 20-25 connection requests/day)
+- Full production: **~4-6 weeks from clone** (longer than email sibling due to LinkedIn caps)
 
-You can send internal test emails (to your own tribe of mailboxes) from day 1 while LIA is drafted. Only real-prospect sends wait for LIA.
+Rough math: ~500 connection requests / month at cruise, ~20-25% accept rate = ~100-125 new connections/month = ~15-25 replies/month = ~5-10 demos/month from a single account. Scale by adding accounts (HeyReach multi-seat) or accepting slower growth.
 
 ## Credits
 
-Built atop the BlockchainAnalysis.io outbound pipeline (v1.0 — April 2026). Battle-tested on 533+ real leads across UK/UAE/EU/Singapore. Generalized for arbitrary B2B/B2C use cases.
+Forked from [`generic-coldmailing-flow`](https://github.com/0xDonnie/generic-coldmailing-flow) (April 2026). Architecture ported; channel swapped email → LinkedIn; rate limits and warmup strategy adapted.

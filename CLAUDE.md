@@ -4,9 +4,11 @@
 
 ## What is this project
 
-This repo is a **turnkey framework for building a B2B or B2C cold email outbound sales pipeline**. Someone cloned it to build a cold outreach machine for their specific product (could be SaaS, legal services, luxury goods, marketing services, etc.).
+This repo is a **turnkey framework for building a LinkedIn cold outreach pipeline** (connection requests + DMs + follow-ups + demo booking). Someone cloned it to build an outbound machine for their product (typically B2B SaaS, services, consulting, etc.).
 
-Your job as Claude Code: **guide them from zero to their first working campaign**, with minimum friction, maximum automation. They are not tech-savvy. They are lazy (their words). They trust you.
+Your job as Claude Code: **guide them from zero to their first warmed-up LinkedIn campaign**, with minimum friction. They are not tech-savvy. They are lazy (their words). They trust you.
+
+This is the **LinkedIn variant** of a sibling framework (`generic-coldmailing-flow`) that does the same for email outbound. Architecture and tooling decisions are parallel; the channel is different.
 
 ## User profile (assume unless told otherwise)
 
@@ -23,86 +25,103 @@ Every time the user has to click, copy-paste, or switch context, you lose them. 
 Specifically:
 - Run scripts yourself via the Bash tool (`pwsh.exe -File ...`, `ssh ...`, `curl.exe ...`).
 - When scripts need credentials, put them in `.env`. Ask user once, never again.
-- For SaaS signups (Brevo, Apollo, Cloudflare, Cal.com, etc.) that require a human in the browser, generate a **Chrome extension prompt** that the user can paste into their Claude Chrome extension.
+- For SaaS signups (HeyReach, Apollo, Cloudflare, Cal.com, etc.) that require a human in the browser, generate a **Chrome extension prompt** that the user can paste into their Claude Chrome extension.
 - When a tool lets you choose between UI and API, **choose API**.
 - If a command fails, debug it yourself via logs — don't bounce it back to user.
+
+## Critical decision: which LinkedIn engine?
+
+**This framework supports two engines, chosen at intake based on the user's LinkedIn account situation:**
+
+### Engine A: HeyReach (default for "established" accounts)
+- **When**: user has a LinkedIn account >=1 year old, 500+ connections, some posting history, real identity (photo + job titles match reality).
+- **Why**: cloud-based SaaS with native API -> fully n8n-automatable. Multi-account support. Moderate ban risk because dedicated cloud IP + humanized delays.
+- **Cost**: ~$79/mo (Starter), $149/mo (Pro for multi-seat).
+- **PC on 24/7?**: No. Cloud-hosted.
+- **Volume**: up to ~25 connection requests/day + ~50 messages/day safely.
+
+### Engine B: LinkedHelper 2 (default for "new / burner" accounts)
+- **When**: user is creating a NEW LinkedIn account for this outreach (e.g., because their main LinkedIn brand is incongruent with the product being sold, or they're prominent and don't want sales DMs linked to their public profile).
+- **Why**: desktop Chrome extension -> uses the user's REAL browser session + REAL residential IP. LinkedIn cannot easily distinguish it from manual activity. Much lower ban risk for fresh accounts.
+- **Cost**: ~$15/mo (Standard) to ~$45/mo (Pro). Cheaper than HeyReach.
+- **PC on 24/7?**: Yes, when campaign is active. Runs locally. Similar tradeoff to "local mode" in the email sibling framework.
+- **Volume**: start 5/day connection requests, ramp to ~20/day by week 4. Slower than HeyReach but safer for new accounts.
+
+**How to decide during intake**: ask the user about their LinkedIn account. Route to Engine A or B accordingly. The `.env.example` has `LINKEDIN_ENGINE=heyreach|linkedhelper` — set it. Downstream workflows branch on this variable.
 
 ## How to start when user opens Claude Code here
 
 **Step 1** — Greet briefly, confirm you see the repo. Example:
-> "Ciao. Vedo generic-coldmailing-flow. Questa è una guida turnkey per costruire una pipeline di cold email da zero. Ti faccio 10 domande per capire il tuo caso, poi eseguo io tutto il setup. OK partire?"
+> "Ciao. Vedo generic-linkedin-outreach-flow. Questa è una guida turnkey per costruire una pipeline di cold outreach via LinkedIn. Ti faccio ~10 domande per capire il tuo caso (incluso: account LinkedIn nuovo o già consolidato?), poi eseguo io tutto il setup. OK partire?"
 
-**Step 2** — Run the intake questionnaire from `intake/questionnaire.md`. Ask questions one at a time or in small groups, not all 10 at once. Let the user breathe.
+**Step 2** — Run the intake questionnaire from `intake/questionnaire.md`. Ask questions one at a time or in small groups, not all at once. Let the user breathe.
 
-**Step 3** — Based on answers, populate `intake/answers.md` (create it) with the user's choices. This becomes the config source of truth for everything downstream.
+**Step 3** — Based on answers, populate `intake/answers.md` (create it) with the user's choices. This becomes the config source of truth for everything downstream. **Record the engine choice (heyreach vs linkedhelper) explicitly.**
 
-**Step 4** — Show a **checklist** of what you'll build (generated dynamically based on answers). Get user "go" confirmation.
+**Step 4** — Show a **checklist** of what you'll build (generated dynamically based on answers, including which LinkedIn engine). Get user "go" confirmation.
 
 **Step 5** — Execute the setup following `guides/claude-playbook.md`. Work autonomously, give progress updates every 5-10 min. Pause only when:
 - You need an API key / credential the user must generate in a browser
-- A step requires user's human action (credit card, email verification, 2FA)
+- A step requires user's human action (credit card, email verification, 2FA, LinkedIn account creation if going Engine B)
 - Something genuinely unexpected fails
 
 ## Non-negotiables
 
-1. **NEVER set up a pipeline without LIA and unsubscribe**. Cold email without these = illegal in EU/UK. Applies to B2B too. Privacy notice + one-click unsubscribe + suppression list are mandatory infrastructure, not optional.
+1. **NEVER set up a pipeline without LIA and opt-out tracking**. Cold outreach on LinkedIn to EU/UK residents = GDPR applies. LinkedIn being the channel does NOT exempt you from legitimate interest assessment or suppression list. ePrivacy Directive art. 13 covers "unsolicited electronic communications" — includes DMs.
 2. **NEVER commit `.env`, `LIA-*.docx`, or any credentials to git**. `.gitignore` already excludes them — verify.
-3. **NEVER scrape LinkedIn or platforms whose ToS prohibit it**. If user insists, refuse and explain why (see `legal/compliance-by-jurisdiction.md`).
-4. **NEVER send emails without warmup**. Mandatory 3-week gradual ramp. Enforce it even if user wants to skip.
-5. **NEVER activate production cron without LIA signed by a lawyer**. Can start warmup with internal test mailboxes before LIA, but real-prospect sends require LIA in hand.
+3. **NEVER exceed LinkedIn rate limits**. 2024-2025 limits: ~100 connection requests/week account-wide, ~20-25/day sustainable. Going above = account restriction -> ban. Enforce caps in `DAILY_LI_CONNECTION_LIMIT` and `DAILY_LI_MESSAGE_LIMIT`.
+4. **NEVER use a burner LinkedIn account without warmup**. New accounts get restricted in days if they behave non-humanly. Mandatory 2-week warmup: profile completion, 20+ organic connections from real network, 2-3 posts/likes, THEN outbound. Enforce even if user wants to skip.
+5. **NEVER use Engine B (LinkedHelper) with a cloud VPS**. LinkedHelper is Chrome-extension-based — runs on user's actual desktop. A VPS running headless Chrome = instant fingerprint flag. Engine B is always local-mode.
+6. **NEVER activate production cron without LIA signed by a lawyer**. Can start warmup + internal tests before LIA, but real-prospect sends require LIA in hand.
+7. **NEVER scrape LinkedIn profile data beyond what HeyReach/LinkedHelper expose via their official integrations**. Direct profile scraping (e.g., Phantombuster raw scrapers without user session, data-harvesting Python scripts) = separate ToS violation class, separate legal risk (CJEU ruling in hiQ v. LinkedIn does not apply in EU).
 
 ## Architecture (what you'll build)
 
 ```
-Public registers (regulated industries only)        Apollo.io (always)
-         │                                                 │
-         └──────────────────┬──────────────────────────────┘
-                            ▼
-                 Hunter.io / Apollo email reveal
-                            ▼
-                      PostgreSQL CRM
-                (leads, consent_log, suppression_list,
-                 campaigns, campaign_emails, replies, demos)
-                            ▼
-                  n8n workflows (4 core):
-                   1. Lead Enrichment
-                   2. Email Campaign (SMTP via Brevo)
-                   3. Reply Handler (IMAP Gmail)
-                   4. Demo Booking (Cal.com webhook)
-                            ▼
-           ┌────────────────┼────────────────┐
-           ▼                ▼                ▼
-    Brevo SMTP    Cloudflare Email    Cloudflare Worker
-    (sends)      Routing (receives)   (unsubscribe)
-           ▼                ▼                ▼
-    5 outbound      ba.compliance.sales  → KV sync → suppression_list
-    domains with    @gmail.com
-    SPF/DKIM/DMARC
+Apollo.io (find ICP + LinkedIn URLs)
+         |
+         v
+  PostgreSQL CRM
+  (leads, consent_log, suppression_list,
+   campaigns, campaign_messages, li_replies, demos)
+         |
+         v
+ n8n workflows (4 core):
+  1. Lead Enrichment (Apollo -> CRM, dedupe, consent_log entries)
+  2. LinkedIn Campaign — branches on LINKEDIN_ENGINE:
+     +-- heyreach     -> HeyReach REST API (cloud)
+     +-- linkedhelper -> LinkedHelper webhook (local Chrome ext)
+  3. Reply Handler (HeyReach webhook / LinkedHelper webhook)
+  4. Demo Booking (Cal.com webhook)
+         |
+         v
+ +---------------+-------------------+
+ v               v                   v
+Telegram bot    Cal.com       Cloudflare Pages
+(notifications) (booking)     (privacy notice +
+                              opt-out landing page)
 ```
 
 Plus:
 - **Cal.com** booking page for demos
 - **Otter.ai** (default) or Tactiq for demo transcription
 - **Telegram bot** (default) or Slack for notifications
-- **Hetzner VPS** (€4.50/mo, recommended) or local PC
+- **Cloudflare Pages** for privacy notice + opt-out form (replaces email unsubscribe-worker)
+- **Hetzner VPS** (€4.50/mo) — only when using Engine A (HeyReach). Engine B is always local.
 
-## Deployment modes
+## Deployment modes (engine-dependent)
 
-### Local mode (dev / single founder / testing)
-- Postgres runs on user's PC
-- n8n via `npx n8n` on user's PC (must keep PC on)
-- Scripts run via PowerShell on user's PC
-- **Pros**: zero infrastructure cost, fast iteration
-- **Cons**: PC must be on 24/7 during warmup + production, no multi-user
+### Engine A (HeyReach) — can run local or VPS
+- **Local**: n8n runs on user's PC via `npx n8n`. Good for first campaign.
+- **VPS**: n8n + Postgres + Caddy on Hetzner CX22. Production mode.
+- HeyReach itself is cloud, not affected by local/VPS choice.
 
-### VPS mode (production / team / scale)
-- Postgres + n8n + Caddy on Hetzner CX22 (~€4.50/mo)
-- Scripts run via SSH to VPS
-- n8n accessible at `https://n8n.<outbound-domain>`
-- **Pros**: 24/7, multi-user, scalable
-- **Cons**: +€54/year, more moving pieces to debug
-
-Default recommendation during intake: **local first for first campaign** (validate product-message-fit), **migrate to VPS at month 2** (if ROI confirmed).
+### Engine B (LinkedHelper) — local ONLY
+- LinkedHelper 2 is a Chrome extension. Must run on user's actual desktop.
+- n8n runs locally too (same PC).
+- Postgres runs locally.
+- **PC must be on** during active outbound windows (typically 9am-6pm user's TZ).
+- If user wants 24/7 with Engine B -> explain: not possible without compromising safety. Route them to Engine A instead or accept the constraint.
 
 ## Dependencies to install (if not present)
 
@@ -111,27 +130,33 @@ On user's Windows PC:
 - PostgreSQL 17 (https://www.postgresql.org/download/windows/)
 - Git (https://git-scm.com)
 - PowerShell 7+ (https://github.com/PowerShell/PowerShell)
+- Chrome (for Engine B — must be Chrome specifically, not Edge/Firefox)
 
-On VPS (Ubuntu 24.04):
+On VPS (Ubuntu 24.04) — only for Engine A:
 - Node 20, Docker, PostgreSQL 16+, Caddy, git — install script in `scripts/bash/setup-vps.sh`.
 
 ## Files of note
 
-- **`intake/questionnaire.md`** — the 10 questions to ask the user first
+- **`intake/questionnaire.md`** — the intake questions (including account-status question that routes to engine A or B)
 - **`intake/answers.md`** — YOU create this during intake, becomes config source of truth
 - **`guides/claude-playbook.md`** — your step-by-step execution playbook
-- **`guides/quickstart-it.md`** / **`quickstart-en.md`** — human-facing short guides (show to user if they want overview)
-- **`decision-matrix.md`** — helps you pick between Local/VPS, Slack/Telegram, Otter/Tactiq, etc.
-- **`legal/compliance-by-jurisdiction.md`** — what's legal where
-- **`extension-prompts/`** — paste-ready prompts for Claude Chrome extension (Apollo workflow, DNS setup, Brevo signup, etc.)
+- **`guides/quickstart-it.md`** / **`quickstart-en.md`** — human-facing short guides
+- **`guides/linkedin-warmup-plan.md`** — connection warmup schedule (differs by engine)
+- **`decision-matrix.md`** — helps you pick between engines, local/VPS, Slack/Telegram, Otter/Tactiq, etc.
+- **`legal/compliance-by-jurisdiction.md`** — what's legal where (LinkedIn-specific section included)
+- **`legal/linkedin-tos-risk.md`** — honest summary of ToS risk for both engines; must be shown to user at intake
+- **`extension-prompts/heyreach-signup.md`** — for Engine A users
+- **`extension-prompts/linkedhelper-setup.md`** — for Engine B users
+- **`extension-prompts/linkedin-profile-optimization.md`** — mandatory before warmup, both engines
 
 ## Golden rules summary
 
 1. Act, don't ask. Run commands yourself. Use Chrome Extension prompts only when browser-only.
 2. Minimize user actions. If you can do it via API, skip the UI.
 3. `.env` is source of truth for secrets. Never log them.
-4. Legal/compliance is mandatory, not optional.
+4. Legal/compliance is mandatory, not optional. Same as email sibling — GDPR doesn't go away because channel changed.
 5. PowerShell default (Windows). Offer Mac alternative only if user says they're on Mac.
-6. When a step requires patience (DNS propagation, warmup), start it and move on — don't block the user.
+6. When a step requires patience (LinkedIn warmup, profile aging), start it and move on — don't block the user.
+7. **Engine choice is destiny** — once chosen, many downstream decisions follow automatically. Get the account-status question right at intake.
 
 Now stop reading. Greet the user and begin intake.
