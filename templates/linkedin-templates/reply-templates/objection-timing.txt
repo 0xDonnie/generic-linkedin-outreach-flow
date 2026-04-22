@@ -1,0 +1,9 @@
+Ciao {{firstName}},
+
+capisco perfettamente — il timing è sempre un tema.
+
+Ti propongo questo: ti mando a te direttamente un 2-pager sul caso d'uso (zero call, leggilo quando ti va). Se a Q3/Q4 diventa pertinente, riapri tu. Per me è zero fatica.
+
+Va bene se te lo mando?
+
+{{senderFirstName}}

@@ -2,7 +2,9 @@
 
 Quick reference for what's legal where. **Not legal advice** — confirm with a privacy lawyer in your jurisdiction before sending.
 
-## B2B cold email — jurisdiction matrix
+> **Important**: LinkedIn direct messaging is treated the same as email by ePrivacy Directive art. 13. A DM is an "unsolicited electronic communication." The same legal basis, consent, and opt-out rules apply. Use this matrix with that in mind — "B2B cold email" and "B2B cold LinkedIn DM" have the SAME legal posture per jurisdiction below.
+
+## B2B cold outreach (email or LinkedIn DM) — jurisdiction matrix
 
 | Jurisdiction | Legal basis | LIA required | Unsubscribe required | Other |
 |---|---|---|---|---|
@@ -19,7 +21,7 @@ Quick reference for what's legal where. **Not legal advice** — confirm with a 
 | 🇨🇦 Canada | CASL — **very strict**, requires express consent | ❌ Explicit consent needed | ✅ Required | CASL effectively bans cold B2B to Canadian addresses without prior relationship |
 | 🇦🇺 Australia | SPAM Act 2003 | ❌ "Inferred consent" for B2B | ✅ Required | Business roles at "businesses in the same industry" considered inferred consent |
 
-## B2C cold email — jurisdiction matrix
+## B2C cold outreach (email or LinkedIn DM) — jurisdiction matrix
 
 | Jurisdiction | Legal basis | Cold to consumers OK? |
 |---|---|---|
@@ -69,14 +71,18 @@ Common patterns:
 ## What this framework enforces
 
 - ✅ Every lead must have a `consent_log` row before sending (enforced by `contactable_leads` view)
-- ✅ Every email has a one-click unsubscribe link (List-Unsubscribe header + visible link)
-- ✅ Unsubscribes are permanent (suppression_list table, cross-campaign)
-- ✅ Every email footer shows legal entity + address + privacy notice URL
-- ✅ No personal email collection (business emails only)
-- ✅ No behavioural tracking (just aggregate campaign metrics)
+- ✅ Every first-DM includes privacy notice URL + "reply STOP" opt-out instruction
+- ✅ Opt-outs are permanent (suppression_list table, cross-campaign, keyed by LinkedIn URL + public_id + email)
+- ✅ Connection declines → automatic suppression
+- ✅ "STOP" / equivalent replies → automatic suppression (reply handler classifies `opt_out`)
+- ✅ Sender identity visible on LinkedIn (real profile) + in DM body (company + role + DPO email)
+- ✅ No profile scraping — data comes from Apollo only
+- ✅ No behavioural tracking of recipient LinkedIn activity
+- ✅ Rate-limited to platform-sustainable caps (≤20-25 connection requests/day, ≤40 messages/day)
 
 What this framework **does NOT do** (you must handle):
 - ❌ Generate the signed LIA document (that's a lawyer's job)
 - ❌ Verify opt-in databases for B2C (you must get proof from the data provider)
 - ❌ Translate privacy notices (you must translate to recipients' language if you want to be defensible in that jurisdiction)
 - ❌ Provide jurisdiction-specific legal counsel
+- ❌ Eliminate LinkedIn ToS risk (see `linkedin-tos-risk.md` — separate issue from GDPR)

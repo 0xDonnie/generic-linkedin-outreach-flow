@@ -1,0 +1,9 @@
+Ciao {{firstName}},
+
+fantastico, grazie.
+
+Ti propongo 15 minuti questa settimana o la prossima: {{calendarUrl}}
+
+Scegli lo slot che preferisci — se nessuno va bene, dimmi tu 2-3 finestre e trovo io il modo.
+
+{{senderFirstName}}

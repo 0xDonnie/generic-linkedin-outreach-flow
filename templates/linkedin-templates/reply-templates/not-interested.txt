@@ -1,0 +1,5 @@
+Grazie {{firstName}}, tutto chiaro. Ti lascio in pace — nessuna replica da parte mia.
+
+Se mai in futuro cambiasse qualcosa, sai dove trovarmi. In bocca al lupo!
+
+{{senderFirstName}}

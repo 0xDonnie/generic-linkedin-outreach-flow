@@ -1,0 +1,1 @@
+Ciao {{firstName}}, lavoro con aziende come {{company}} su {{connectionNoteHook}}. Mi farebbe piacere scambiare un paio di idee. Ti va di connetterci?

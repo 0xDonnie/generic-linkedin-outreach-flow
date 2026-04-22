@@ -1,0 +1,10 @@
+Ciao {{firstName}},
+
+ultimo messaggio da parte mia — non ti stresso oltre.
+
+Se quello che facciamo ({{productPitch}}) può servire a {{company}} anche tra 3-6 mesi, segnati il link al calendario per quando avrai tempo: {{calendarUrl}}
+
+Altrimenti rispondi "chiudi" e ti lascio in pace definitivamente.
+
+Un saluto,
+{{senderFirstName}}

@@ -23,7 +23,7 @@
 <h1>Privacy Notice — Outbound Marketing Communications</h1>
 <p class="meta">Effective: {{EFFECTIVE_DATE}} · Version {{VERSION}} · LIA reference: <code>{{LIA_REF}}</code></p>
 
-<p>This notice explains how <strong>{{COMPANY_LEGAL_NAME}}</strong>{{OPERATING_BRAND_CLAUSE}} ("we", "our") processes the personal data of professional contacts we reach out to as part of our B2B sales activity{{B2C_NOTE}}.</p>
+<p>This notice explains how <strong>{{COMPANY_LEGAL_NAME}}</strong>{{OPERATING_BRAND_CLAUSE}} ("we", "our") processes the personal data of professional contacts we reach out to as part of our B2B sales activity via LinkedIn connection requests and direct messages{{B2C_NOTE}}.</p>
 
 <h2>1. Who we are (Data Controller)</h2>
 <ul>
@@ -35,14 +35,14 @@
 <h2>2. What personal data we process</h2>
 <p>We process limited business-context personal data necessary to identify and contact you in your professional capacity:</p>
 <ul>
-  <li>Full name</li>
-  <li>Job title and seniority</li>
-  <li>Employer / company affiliation</li>
-  <li>Business email address</li>
-  <li>Public LinkedIn profile URL (where available)</li>
+  <li>Full name (from your public LinkedIn profile)</li>
+  <li>Job title and seniority (from your public LinkedIn profile)</li>
+  <li>Employer / company affiliation (from your public LinkedIn profile)</li>
+  <li>LinkedIn profile URL and public identifier</li>
+  <li>Business email address (where provided by our data partners, used only if conversation escalates off-platform)</li>
   <li>Country of professional residence</li>
 </ul>
-<p>We do <strong>not</strong> process personal email addresses, home addresses, or personal phone numbers.</p>
+<p>We do <strong>not</strong> process personal email addresses, home addresses, personal phone numbers, or private/connections-only LinkedIn profile fields. We do <strong>not</strong> scrape LinkedIn directly.</p>
 
 <h2>3. Where we get your data (sources)</h2>
 <p>Your data was sourced from one or more of the following:</p>
@@ -62,8 +62,8 @@
 
 <h2>5. What we do with your data</h2>
 <ul>
-  <li>We send up to 4 commercial emails to your business address (1 initial + 3 follow-ups across ~6 weeks), unless you reply or unsubscribe — in which case we stop immediately.</li>
-  <li>We log opens and clicks <strong>at the campaign level only</strong> (aggregate metrics) — we do not build personal behavioural profiles.</li>
+  <li>We send at most 1 connection request plus 3 direct messages on LinkedIn (initial + 2 follow-ups) across ~3-6 weeks, unless you reply, decline the connection, or say "STOP" — in which case we stop immediately.</li>
+  <li>We record whether you accepted the connection and whether you replied, but we do <strong>not</strong> track your subsequent LinkedIn activity (likes, posts, searches, etc.).</li>
   <li>We use the data to qualify whether you may want a {{DEMO_LENGTH}}-minute product demonstration. If you book one, that conversation falls under a separate contractual basis.</li>
 </ul>
 
@@ -77,7 +77,7 @@
 <h2>7. Your rights</h2>
 <p>Under the GDPR (and equivalent UK / UAE / Singapore data protection laws where applicable) you have the right to:</p>
 <ul>
-  <li><strong>Object</strong> to this processing — exercise via the one-click unsubscribe link in any email footer, or by emailing <a href="mailto:{{DPO_EMAIL}}">{{DPO_EMAIL}}</a>.</li>
+  <li><strong>Object</strong> to this processing — reply "STOP" to any of our LinkedIn DMs, decline or remove the connection, use the opt-out form at <a href="{{OPTOUT_FORM_URL}}">{{OPTOUT_FORM_URL}}</a>, or email <a href="mailto:{{DPO_EMAIL}}">{{DPO_EMAIL}}</a>.</li>
   <li><strong>Access</strong> the personal data we hold about you.</li>
   <li><strong>Rectify</strong> inaccurate data.</li>
   <li><strong>Erase</strong> your data (right to be forgotten).</li>

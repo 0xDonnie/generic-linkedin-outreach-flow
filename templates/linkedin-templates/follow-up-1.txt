@@ -1,0 +1,11 @@
+Ciao {{firstName}},
+
+so che i messaggi si perdono — ti rimando su quello di qualche giorno fa.
+
+TL;DR: {{productPitch}}
+
+Se è rilevante per {{company}}, 15 minuti di call ti danno l'idea concreta: {{calendarUrl}}
+
+Se non fa per te ora, nessun problema — dimmi pure "pass" e chiudo qui.
+
+{{senderFirstName}}

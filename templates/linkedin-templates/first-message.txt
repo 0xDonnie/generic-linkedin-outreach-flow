@@ -1,0 +1,16 @@
+Ciao {{firstName}},
+
+grazie per l'accettazione.
+
+Ti scrivo brevemente perché {{firstMessageHook}}.
+
+In pratica: {{productPitch}}
+
+Se dovesse interessarti capire come applicarlo a {{company}}, posso mandarti un case study di 2 minuti o, se preferisci, possiamo fissare 15 minuti al telefono: {{calendarUrl}}
+
+Trasparenza: sono {{senderFullName}}, {{senderTitle}} di {{senderCompany}}. Ti ho contattato perché il tuo ruolo ({{title}}) è pubblicamente visibile su LinkedIn e risulta potenzialmente interessato a quello che facciamo — base giuridica: legittimo interesse (GDPR art. 6.1.f). Informativa privacy completa: {{privacyNoticeUrl}}
+
+Se preferisci non ricevere altri messaggi, rispondi "STOP" e sparisco senza replica.
+
+Un saluto,
+{{senderFirstName}}

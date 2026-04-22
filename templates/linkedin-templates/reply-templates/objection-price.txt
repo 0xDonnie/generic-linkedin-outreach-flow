@@ -1,0 +1,9 @@
+Ciao {{firstName}},
+
+domanda legittima.
+
+Il prezzo va valutato sul delta vs la situazione attuale, non in assoluto. Tipicamente i clienti di {{senderCompany}} recuperano il costo entro il primo mese grazie a [metrica concreta da scegliere: tempo risparmiato / errori evitati / deal accelerati].
+
+Se vuoi, 10 minuti di call e ti faccio il calcolo sul tuo caso specifico — niente pitch, solo numeri: {{calendarUrl}}
+
+{{senderFirstName}}
