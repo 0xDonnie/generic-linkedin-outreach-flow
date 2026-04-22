@@ -1,6 +1,6 @@
 # Local Setup (Windows)
 
-For when Claude is guiding a user through local (PC-based) deployment.
+For when Claude is guiding a user through local deployment. **Mandatory for Engine B (LinkedHelper)**, optional-but-common for Engine A (HeyReach) when starting the first campaign.
 
 ## Prerequisites
 

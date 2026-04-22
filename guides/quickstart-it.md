@@ -1,25 +1,34 @@
-# Quickstart — Italiano
+# Quickstart — Italiano (LinkedIn variant)
 
-Guida in 1 pagina per chi è pigro.
+Guida in 1 pagina per chi è pigro. Per la versione "cold email" usa il repo sibling `generic-coldmailing-flow`.
 
 ## Cosa stai per costruire
 
 Una pipeline automatizzata che:
-1. Trova i decision-maker giusti nelle aziende che vuoi targetizzare
-2. Gli manda email personalizzate (Travel Rule, compliance, SaaS, orologi, qualunque sia il tuo prodotto)
-3. Gestisce le risposte automaticamente (categorizza, unsubscribe, notifiche Telegram)
+1. Trova i decision-maker giusti nelle aziende target (via Apollo — scopre anche URL LinkedIn)
+2. Manda connection request + DM personalizzati su LinkedIn (tramite HeyReach o LinkedHelper)
+3. Gestisce le risposte automaticamente (classifica, opt-out, notifica Telegram)
 4. Prenota demo via Cal.com
 5. Trascrive le demo con Otter (opzionale)
 
-Costo totale operativo: **~$60-120/mese** + **€500-1500 una tantum** per LIA avvocato privacy.
+Costo totale operativo: **~$65-200/mese** (dipende da engine scelto) + **€500-1500 una tantum** per LIA avvocato privacy.
+
+## Decisione chiave: quale engine?
+
+Prima di tutto devi sapere **quale LinkedIn account** userai:
+
+- **Account consolidato** (>=1 anno, >500 connessioni, tuo vero profilo) → **HeyReach** (~$79/mo, cloud, PC off è ok, API)
+- **Account nuovo / burner** (creato per questa campagna, o molto recente) → **LinkedHelper 2** (~$15-45/mo, desktop Chrome extension, PC deve stare acceso durante le finestre di invio)
+
+Claude ti chiede questo all'intake. Se sei indeciso, Claude ti aiuta.
 
 ## Come partire (5 minuti)
 
-1. **Clona questo repo** dentro una cartella vuota nuova:
+1. **Clona questo repo** in una cartella vuota:
    ```powershell
    cd D:\GitHub
-   git clone <url-di-questo-repo> il-mio-progetto-outreach
-   cd il-mio-progetto-outreach
+   git clone https://github.com/0xDonnie/generic-linkedin-outreach-flow.git il-mio-progetto-li
+   cd il-mio-progetto-li
    ```
 
 2. **Apri Claude Code** in quella cartella:
@@ -27,86 +36,102 @@ Costo totale operativo: **~$60-120/mese** + **€500-1500 una tantum** per LIA a
    claude
    ```
 
-3. Claude legge `CLAUDE.md` e ti saluta. Ti fa 10 domande in 10 minuti.
+3. Claude legge `CLAUDE.md` e ti saluta. Ti fa ~11 domande in 10-15 minuti.
 
-4. Tu rispondi. Claude prende le decisioni tecniche per te, tu decidi solo le cose che contano (chi è il target, come scrivi le email, ecc.).
+4. Tu rispondi. Claude prende le decisioni tecniche, tu decidi solo le cose che contano (target, tone, account LinkedIn, ecc.).
 
 5. Claude esegue tutto. Ti interrompe SOLO quando serve:
-   - Un'API key (te la chiede, la metti, non ne parliamo più)
-   - Un click sul browser per SaaS signup (Claude ti dà un prompt pronto da incollare nella Claude Chrome Extension)
-   - Un link di verifica email
+   - Una credenziale (HeyReach API key, ecc.) — te la chiede, la metti, fine
+   - Un click browser per SaaS signup (Claude ti dà un prompt pronto per Claude Chrome Extension)
+   - Creazione account LinkedIn (se Engine B e non ce l'hai) — la fai tu manualmente
    - Pagamento carta di credito
 
-Tempo totale setup: **3-4 ore** (di cui Claude lavora ~2h, tu ~1h di cose che richiedono browser).
+Tempo setup infra: **3-4 ore** di cui Claude lavora ~2h, tu ~1h di browser.
 
-## Prerequisiti (scegli cosa hai pronto PRIMA di iniziare)
+**Poi**: **2-4 settimane di warmup** (diverso tra Engine A e B, tutto guidato da Claude).
+
+## Prerequisiti
 
 **Must have**:
 - PC Windows 11 con admin rights (o Mac — dillo a Claude)
-- Carta di credito (per Apollo $49/mo + domini Cloudflare ~$50/anno)
-- Accesso a un browser + inbox email
+- **Chrome installato** (mandatory per Engine B — LinkedHelper 2)
+- Carta di credito (Apollo $49/mo + engine $15-79/mo + dominio landing ~$10/anno)
+- Browser + inbox email
 
-**Nice to have ma Claude te li guida se mancano**:
-- Account Google (ne serve uno dedicato — "tuoprogetto.sales@gmail.com" — creato in incognito)
-- Account Cloudflare
-- Lista iniziale di tipo-aziende target (puoi brainstorming con Claude)
+**Sul LinkedIn account**:
+- Se Engine A: il tuo account LinkedIn consolidato + password + 2FA pronto
+- Se Engine B: o un account LinkedIn nuovo già creato, o disponibilità a crearlo (serve numero di telefono per SMS verification)
 
-## Dopo il setup
+## Cosa succede nel tempo
 
-- Primi **test internal** ti arrivano su Gmail dedicata (warmup week 1)
-- Mentre warmup va avanti, Claude ti scrive un'email da mandare a 2-3 avvocati privacy per la LIA
-- **LIA firmata in 1-2 settimane** (avvocato esterno, non bloccante)
-- **Primi invii a prospect reali**: settimana 4 del warmup (dopo LIA)
-- **Regime pieno**: da settimana 5 in avanti
+- **Ore 0-4**: setup infra (Claude fa quasi tutto)
+- **Settimana 1-2**: profile optimization + warmup organico (Engine A: poco; Engine B: mandatorio e serio)
+- **Settimana 2-3**: inizia primi invii a bassissimo volume (5-10/day)
+- **Settimana 4**: ramp a 15-20 connection request/day (cruise rate)
+- **LIA**: in parallelo 1-2 settimane con avvocato — NON blocca warmup
+- **Regime pieno**: da settimana 5-6
 
-## Cosa fa Claude automaticamente (quindi non ci devi pensare)
+## Cosa fa Claude automaticamente
 
-- Installa Postgres / Node / Caddy dove serve
-- Crea database CRM con schema completo
-- Configura DNS (SPF/DKIM/DMARC) per tutti i domini
-- Deploya unsubscribe endpoint su Cloudflare Workers
-- Deploya privacy notice page
-- Importa 4 workflow n8n + credenziali bindate
-- Configura Cal.com webhook
-- Configura Otter auto-join
-- Configura Telegram bot
-- Ti scrive template email con il tuo prodotto già dentro
-- Testa tutto end-to-end prima di dichiararsi fatto
+- Installa Postgres / Node dove serve
+- Crea database CRM (schema LinkedIn-first)
+- Importa 4 workflow n8n + wire le credenziali
+- Configura webhook HeyReach o LinkedHelper → n8n → CRM → Telegram
+- Deploya privacy notice + opt-out form su Cloudflare Pages
+- Setup Cal.com webhook, Otter auto-join, Telegram bot
+- Ti scrive template DM con il tuo prodotto già dentro
+- Impone rate limits LinkedIn (DAILY_LI_CONNECTION_LIMIT=20 ecc.) — non puoi superarli accidentalmente
+- Ramp up graduato dei limiti settimana per settimana
 
-## Cosa DOVRAI fare tu (nessuna scorciatoia)
+## Cosa DOVRAI fare tu (no shortcuts)
 
-- Rispondere alle 10 domande intake
-- Registrarti sui SaaS (Claude ti da i prompt per Chrome ext ma il primo click lo fai tu)
-- Decidere il tono delle email
-- Gestire le risposte dei prospect reali (è il tuo lavoro di vendita, non di Claude)
-- Contattare un avvocato per LIA (Claude scrive l'email per te)
+- Rispondere alle domande intake
+- Se account LinkedIn nuovo: creare l'account (LinkedIn non permette creazione programmatica, per ragioni di sicurezza)
+- Se Engine B: installare LinkedHelper desktop app sul tuo PC
+- Ottimizzare il profilo LinkedIn (Claude ti dà prompt Chrome ext con steps precisi)
+- Registrarti sui SaaS (primo click browser lo fai tu)
+- Decidere il tone dei DM
+- Rispondere ai prospect reali quando arrivano reply (è vendita, non automazione)
+- Contattare avvocato per LIA (Claude scrive l'email per te)
 
 ## Cose che Claude NON fa (per tua protezione)
 
-- Non manda email senza warmup (ti distruggerebbe la reputation dominio)
-- Non scrappa LinkedIn (viola ToS + GDPR)
-- Non bypassa unsubscribe (illegale + nuoce a te)
-- Non paga senza tua autorizzazione (Cloudflare signup = ok, Apollo $49/mo = chiede "ok procedo col piano Basic $49/mo?")
+- Non manda outbound senza warmup (ti farebbe bannare l'account LinkedIn)
+- Non scrappa LinkedIn direttamente (violazione ToS + GDPR — usa solo Apollo)
+- Non supera i rate limit LinkedIn (2024-2025 caps: 100/settimana, 25/giorno max)
+- Non paga senza tua autorizzazione
+- Non usa LinkedHelper su VPS cloud (difenderebbe contraria alla sua sicurezza — deve stare sul tuo PC)
+
+## Rischio ban — da leggere PRIMA
+
+Prima di iniziare, Claude ti farà leggere `legal/linkedin-tos-risk.md`. Leggilo davvero — è 5 minuti. Riassunto: qualsiasi tool di automazione LinkedIn (HeyReach, LinkedHelper, tutti) tecnicamente viola i ToS. Il rischio ban non è zero. Il framework minimizza il rischio ma non lo elimina. Se perdi l'account, lo perdi. Acknowledge il rischio, poi vai.
 
 ## FAQ rapide
 
-**"Ma se spendo $49 Apollo e poi non converto?"**
-Mese 1 servono per validare product-message-fit. Se dopo 50 invii non hai nemmeno 1 reply positiva → il problema NON è Apollo, è il messaggio. Claude ti aiuta a iterare sui template.
+**"Quanto spendo il primo mese?"**
+~$65-130 (Apollo $49 + engine $15-79 + dominio $10). A regime: stesso costo mensile, tendono a scendere se prendi plan annuali.
 
-**"E se ho già un account Brevo / Apollo / Cloudflare?"**
-Dimmi all'intake che li hai, Claude li riusa. Nessuno re-signup forzato.
+**"Ma vengo bannato?"**
+Percentuale stimata: 2-8% a 6 mesi su HeyReach, <2% su LinkedHelper con caps conservativi. Non zero. Se perdi l'account, lo perdi definitivamente (99% dei casi LinkedIn non riapre).
 
-**"Posso cambiare idea a metà?"**
-Sì. Dici a Claude "ferma, cambio target ICP" → Claude salva stato corrente, riprende da dove eri.
+**"E se ho già un account Apollo / Cloudflare / Cal.com?"**
+Dimmi all'intake che li hai, Claude li riusa. Nessun re-signup.
 
-**"Chi legge le mie risposte?"**
-Arrivano su Gmail dedicata (es. `tuoprogetto.sales@gmail.com`). Tu ti ci logghi con la password che hai scelto al signup. Solo tu (+ chi condividi le credenziali).
+**"Posso cambiare engine dopo?"**
+Tecnicamente sì ma è un dolore — cambia processore dati (→ LIA da aggiornare), cambia credenziali, cambia workflow 2. Meglio decidere bene all'inizio.
 
-**"Cosa succede se mi blocca il firewall aziendale o il Wi-Fi?"**
-Claude rileva gli errori e aspetta. Non è bloccante, rilanci più tardi.
+**"Il mio PC deve stare acceso 24/7?"**
+- Engine A (HeyReach): no, lavora in cloud
+- Engine B (LinkedHelper): sì, durante 9-18 tua TZ. Se spegni, nessun send parte. Claude te lo ricorda.
+
+**"Chi legge le reply?"**
+Telegram notification per positive reply + demo booked. Full conversation rimane su LinkedIn (tu la leggi lì o tramite HeyReach/LinkedHelper UI).
+
+**"Posso fare anche email in parallelo?"**
+Sì, clona anche `generic-coldmailing-flow` e fai setup a parte. Stessi strumenti di base (Postgres, n8n, Cal.com, Telegram, Otter), canali diversi.
 
 ---
 
-Pronto? → apri Claude Code nella cartella → parte da solo.
+Pronto? → apri Claude Code nella cartella clonata → parte da solo.
 
-Dubbi o curiosità "prima di iniziare"? → leggi `guides/detailed-guide-en.md` (lunga 30 pagine — sconsigliata, ma c'è).
+Dubbi profondi prima di iniziare? → leggi `guides/claude-playbook.md` (tecnica, ma completa) o `legal/linkedin-tos-risk.md` (5 minuti, mandatory).

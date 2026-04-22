@@ -1,6 +1,8 @@
-# VPS Setup
+# VPS Setup (Engine A / HeyReach only)
 
 For when Claude is guiding a user through VPS deployment.
+
+**Engine B (LinkedHelper) cannot run on a VPS.** The Chrome extension requires a real desktop Chrome session on the user's residential IP. If user picked Engine B, skip this entirely.
 
 ## Recommended provider: Hetzner
 

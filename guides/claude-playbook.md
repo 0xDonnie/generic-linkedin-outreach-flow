@@ -1,4 +1,4 @@
-# Claude Playbook — execution order
+# Claude Playbook — execution order (LinkedIn variant)
 
 > This is YOUR operational playbook as Claude Code. The user doesn't need to read this. You execute it, step by step, after intake is complete.
 
@@ -7,187 +7,206 @@
 Verify:
 - [ ] `intake/answers.md` exists and is populated
 - [ ] User has said "go"
-- [ ] User has a payment card ready (for Apollo subscription + domain purchases)
-- [ ] User has access to a web browser (for SaaS signups) + their main email inbox (for verification links)
+- [ ] User has acknowledged `legal/linkedin-tos-risk.md`
+- [ ] User has a payment card ready (Apollo + engine subscription)
+- [ ] User has Chrome installed (mandatory for Engine B, recommended for Engine A)
+- [ ] User has a LinkedIn account (existing for Engine A, to-be-created for Engine B)
 
 If any missing, pause and ask.
 
 ## Execution phases
 
+Phase numbering is engine-aware — some phases differ between Engine A (HeyReach) and Engine B (LinkedHelper).
+
 ### Phase 0 — Project scaffolding (5 min, Claude autonomous)
 
 1. Create `.env` from `.env.example`, populate with values from `intake/answers.md`
-2. Create `data/`, `logs/` directories (gitignored)
-3. `npm install` in root for Node.js dependencies
-4. Run `node --version` + `psql --version` + `git --version` to verify tooling present
-5. If `psql` missing → prompt user to install Postgres 17 (give Windows installer link)
+2. Set `LINKEDIN_ENGINE=heyreach` or `linkedhelper` based on intake answer
+3. Create `data/`, `logs/` directories (gitignored)
+4. `npm install` in root for Node.js dependencies
+5. Run `node --version` + `psql --version` + `git --version` to verify tooling present
+6. If `psql` missing → prompt user to install Postgres 17 (Windows installer link)
 
 ### Phase 1 — Database (10 min)
 
-**Local mode**:
-1. Ask user for Postgres password (the one they set during installation)
-2. `createdb ba_sales` (or user-chosen name from answers.md)
+1. Ask user for Postgres password (set during installation) — capture once
+2. `createdb <project_name>`
 3. Run `database/schema.sql`
-4. Verify 7 tables exist via `\dt`
+4. Verify tables exist via `\dt` — expect: leads, suppression_list, consent_log, campaigns, campaign_messages, li_replies, demo_bookings, rate_limit_log
+5. Insert the active campaign row and capture UUID into `.env` as `ACTIVE_CAMPAIGN_ID`
 
-**VPS mode**: defer to Phase 6.
+### Phase 2 — LinkedIn account readiness (varies by engine)
 
-### Phase 2 — Outbound domain purchase (user browser, 15 min)
+**Engine A (HeyReach) — established account (5 min)**
+- Verify sender profile URL is accessible
+- Run `extension-prompts/linkedin-profile-optimization.md` — optimize headline, about, featured
+- If profile has <500 connections: recommend user grow organically first, but don't block
 
-Generate paste-ready prompt for Claude Chrome Extension from `extension-prompts/cloudflare-domain-purchase.md`. Wait for user confirmation "domini comprati".
+**Engine B (LinkedHelper) — new account (1-2 weeks, parallel with other phases)**
+- If account doesn't exist: user creates it (manual, can't do via ext for account creation — security)
+- Run `extension-prompts/linkedin-profile-optimization.md`
+- Organic warmup: 10-20 real connections, 2-3 posts, 2 weeks minimum — this blocks outbound start
+- Tell user: "attivo il resto dell'infra in parallelo, tu intanto scaldi l'account"
 
-During wait: start Phase 3 in parallel.
+### Phase 3 — Engine signup + credential capture (10-20 min, browser + user)
 
-### Phase 3 — SaaS account signups (user browser, 30-60 min in parallel)
+**Engine A**: `extension-prompts/heyreach-signup.md` → capture `HEYREACH_API_KEY` + `HEYREACH_ACCOUNT_ID`
+**Engine B**: `extension-prompts/linkedhelper-setup.md` → user installs desktop app + Chrome ext on their PC → capture `LINKEDHELPER_API_KEY`, verify `http://127.0.0.1:7337` reachable
 
-User creates:
-1. **Apollo.io Basic** ($49/mo) → signup link, generate API key prompt
-2. **Brevo Free** → signup, generate SMTP key prompt
-3. **Cloudflare account** (if not already)
-4. **Dedicated Gmail** for receiving replies (user creates in incognito)
-5. **Cal.com** account → reserve slug, create "Intro Call" event
-6. **Telegram bot** via @BotFather + create notification group
-7. **Otter.ai** → signup, connect Google Calendar, auto-join ON
+Test API connectivity via `node scripts/node/test-linkedin-send.mjs --dry-run --profile <test-url> --type connection --body "test"`.
 
-For each, provide a paste-ready extension prompt from `extension-prompts/`.
+### Phase 4 — Other SaaS signups (parallel, 30-45 min)
 
-User reports back credentials. Claude appends them to `.env`.
+1. **Apollo.io Basic** ($49/mo) → use `extension-prompts/apollo-people-search.md` prep
+2. **Cloudflare account** (if not already)
+3. **Cal.com** account → reserve slug, create "Intro Call" event (`extension-prompts/cal.com-signup.md`)
+4. **Telegram bot** via @BotFather + notification group (`extension-prompts/telegram-bot-create.md`)
+5. **Otter.ai** → signup, connect Google Calendar, auto-join ON (`extension-prompts/otter-signup.md`)
 
-### Phase 4 — DNS configuration (20 min)
+Claude appends captured credentials to `.env` as user reports them.
 
-For each domain purchased in Phase 2:
-1. **MX + SPF + DKIM + DMARC** for Brevo — generate DNS record payloads from `extension-prompts/cloudflare-dns-setup.md`
-2. **Cloudflare Email Routing** to forward `sales@<domain>` to the dedicated Gmail
-3. Verify each domain on Brevo (Brevo dashboard auto-checks DNS)
+### Phase 5 — Domain + privacy page (15 min)
 
-Use API where possible (Cloudflare has a clean DNS API; Claude can do all record additions in one script).
+Only needed if user doesn't have an existing domain:
+1. `extension-prompts/cloudflare-domain-purchase.md` — buy ONE domain for privacy page
+2. Claude creates DNS records via Cloudflare API
+3. Deploy `templates/privacy-notice.html` to Cloudflare Pages (custom subdomain `privacy.<domain>`)
+4. Create opt-out form landing page (same domain, route `/opt-out` → POST to n8n webhook → suppression_list)
+5. Set `.env`: `PRIVACY_NOTICE_URL=...`, `OPTOUT_FORM_URL=...`
 
-### Phase 5 — Unsubscribe Worker + Privacy notice (15 min)
+### Phase 6 — VPS setup (Engine A only, optional, 30 min)
 
-1. Deploy `unsubscribe-worker/` to Cloudflare Workers via `wrangler deploy`
-2. Map custom domain `unsubscribe.<primary-outbound-domain>` to Worker
-3. Deploy `templates/privacy-notice.html` to Cloudflare Pages as `privacy.<primary-outbound-domain>`
-4. Test both URLs respond HTTP 200
-
-### Phase 6 — VPS setup (only if VPS mode, 45 min)
-
-User provides SSH access to Hetzner VPS. Claude runs via SSH:
-
+If user chose VPS mode AND engine=heyreach:
 ```bash
+ssh user@vps.ip
 bash scripts/bash/setup-vps.sh
 ```
+Installs Node 20, Docker, Postgres, Caddy. Copies project, runs schema, imports n8n workflows.
 
-This installs: Node.js 20, Docker, PostgreSQL, Caddy, Git. Then:
-1. Copies project files to `/opt/<project-name>/` via rsync/scp
-2. Creates Postgres user + database + runs schema
-3. Restores data (if migrating from local) via pg_dump/pg_restore
-4. Docker Compose up for n8n
-5. Caddyfile with `n8n.<primary-outbound-domain>` → localhost:5678
-6. Cron for unsubscribe sync every 15 min
+Engine B users skip this — LinkedHelper runs locally.
 
-### Phase 7 — n8n setup (15 min)
+### Phase 7 — n8n setup (20 min)
 
-1. Open n8n at `http://localhost:5678` (local) or `https://n8n.<domain>` (VPS)
-2. User creates owner account (browser UI — unavoidable one-time step)
-3. User generates API key → Claude imports 4 workflows via API (`scripts/powershell/import-workflows.ps1`)
-4. User creates 4 credentials in UI (guided with exact values from `.env`):
-   - BA Postgres
-   - BA SMTP (Brevo)
-   - BA Inbox (Gmail IMAP — requires Gmail App Password)
-   - BA Telegram (or Slack per user's choice)
-5. Claude runs `scripts/powershell/bind-credentials.ps1` to link credentials to nodes
-
-**Note**: if user wants Slack instead of Telegram, `scripts/powershell/replace-telegram-with-slack.ps1` (or vice versa).
+1. Start n8n: `.\scripts\powershell\start-n8n.ps1` (local) OR on VPS
+2. Open n8n at http://localhost:5678 (or https://n8n.<domain>)
+3. User creates owner account (browser UI — unavoidable one-time)
+4. User generates API key → Claude imports 4 workflows via API:
+   - `1-lead-enrichment.json`
+   - `2-linkedin-campaign.json`
+   - `3-reply-handler.json`
+   - `4-demo-booking.json`
+5. User creates credentials in UI:
+   - Outreach Postgres (connect string from `.env`)
+6. Activate workflow 3 (reply handler) first — get its webhook URL
+7. Register webhook URL with the engine:
+   - Engine A: Claude POSTs to `https://api.heyreach.io/api/public/webhook` to register `{{N8N_URL}}/webhook/linkedin-reply`
+   - Engine B: user configures in LinkedHelper desktop → Tools → Webhook
+8. Activate workflow 4 (Cal.com demo booking) — register its webhook at Cal.com via API
 
 ### Phase 8 — Apollo ICP search (45 min, user + extension)
 
-For regulated industries: run registry scrapers first (`scripts/node/scrape-*.mjs` — see `docs/apollo-icp-brainstorm.md`).
+1. Use `extension-prompts/apollo-people-search.md` — generate Apollo search with user's ICP filters
+2. IMPORTANT: export must include `person_linkedin_url` column + filter rows without LinkedIn URL
+3. User drops CSV in `data/raw/apollo-export.csv`
+4. Claude runs `npm run crm:load`
+5. Verify: `SELECT count(*) FROM leads; SELECT count(*) FROM contactable_leads;`
 
-For all: provide `extension-prompts/apollo-icp-search.md` — generates an Apollo search using user's 10 intake answers. Extension builds Apollo Saved Search, exports CSV to Downloads.
+### Phase 9 — Templates fill (15 min, collaborative)
 
-User drops CSV in `data/raw/apollo-export.csv`. Claude runs `npm run crm:load` → leads populated.
+Using intake answers, Claude fills `.env` placeholder variables used by templates:
+- `CONNECTION_NOTE_HOOK` — one-liner for the 300-char invite note (user gives or Claude proposes)
+- `FIRST_MESSAGE_HOOK` — opener for post-accept first DM
+- `PRODUCT_PITCH` — 1-2 sentence pitch
+- Sender identity fields
 
-### Phase 9 — Email templates (15 min, collaborative)
-
-Using intake answers, Claude fills `templates/email-templates/*.md` with:
-- Product name + pitch
-- ICP pain point (user described in Q1)
-- Sender identity
-- Compliance footer (auto-filled from `.env`)
-
-Show renders to user, get "ok" or refinements.
+Show rendered template samples to user (pass each template through the render function with real lead data), get "ok" or refinements.
 
 ### Phase 10 — Smoke test (10 min)
 
-Claude runs `scripts/node/test-send-one.mjs --to <user's-dedicated-gmail>`. Email arrives, user clicks unsubscribe link, Claude runs sync, verifies suppression_list grows by 1.
+1. Create a test lead in the DB with YOUR user's own LinkedIn URL (or a test profile they own): `INSERT INTO leads (linkedin_url, linkedin_public_id, company_name, contact_name, title) VALUES (...);`
+2. Add consent_log row
+3. Run `node scripts/node/test-linkedin-send.mjs --profile <test-profile> --type connection --body "[rendered connection note]"` (Engine A) or via LinkedHelper UI (Engine B manual trigger)
+4. Verify in LinkedIn that the action fired
+5. In LinkedHelper / HeyReach dashboard, verify the send is logged
 
-Everything green → system is production-ready.
+If everything works → system is technically ready. Do NOT activate workflow 2 cron yet.
 
 ### Phase 11 — LIA (parallel, external, 1-2 weeks)
 
-Claude generates an email from `legal/lia-request-email.md` template for user to send to 2-3 privacy lawyers. LIA signed → user gives Claude the reference code → Claude updates `consent_log.lia_ref` + privacy notice HTML + redeploys.
+1. Generate LIA request email from `legal/lia-template-linkedin.md` (ends with the paragraph "Email to send to a privacy lawyer")
+2. User sends to 2-3 privacy lawyers, gets estimates
+3. User chooses, pays (~€500-1500)
+4. Lawyer returns signed LIA → user gives Claude the reference code → Claude updates `.env: LIA_REF=...` + privacy notice HTML + redeploys
 
-**Warmup can start before LIA is back**, as long as sends are only to user's internal tribe mailboxes (not real prospects).
+**Warmup organic phase can run before LIA is back** — no outbound touches yet, just account aging.
 
-### Phase 12 — Warmup (21 days)
+### Phase 12 — LinkedIn warmup (2-4 weeks)
 
-Day 1: Claude activates workflow 2 cron with `DAILY_EMAIL_LIMIT=5`, internal tribe only.
-Day 4-7: ramp +5/day to 25.
-Day 8-14: ramp to 40/day, add first real prospects (5/day).
-Day 15-21: full ramp to 50/day real prospects.
-Day 22+: full production.
+See `guides/linkedin-warmup-plan.md` for the day-by-day schedule. Summary:
 
-Daily: Claude checks Postmaster Tools spam rate, bounce rate, reply rate. Warns if trending bad.
+**Engine A (established account)** — 2 weeks:
+- Week 1: profile polish + 2-3 organic posts + 10-20 network connects (no outreach yet)
+- Week 2: start outreach at 5 connection requests/day, ramp to 10
+- Week 3: 15/day
+- Week 4+: cruise at 20/day
 
-### Phase 13 — Production (ongoing)
+**Engine B (new account)** — 4 weeks:
+- Week 1-2: profile build + organic posts + connect to 20-40 real contacts (no automation yet)
+- Week 3: start outreach at 5/day via LinkedHelper
+- Week 4: ramp to 10/day
+- Week 5+: cruise at 15-20/day
 
-- Daily cron sends 50/day/domain
-- Telegram fires on positive replies + demos booked
-- User processes replies in Gmail + Cal.com
-- Weekly: Claude generates KPI report (sent, reply rate, conversions, cost-per-demo)
+Claude updates `.env` rate caps weekly to enforce the ramp.
+
+### Phase 13 — Production cron active
+
+ONCE Phase 11 (LIA) and Phase 12 warmup criteria are met:
+1. Activate n8n workflow 2 (LinkedIn Campaign) — enables the every-30-min cron
+2. Monitor daily via DB queries:
+   - connection acceptance rate (should be >15% or investigate targeting)
+   - reply rate (should be 5-15%)
+   - opt-out rate (should be <2%)
+3. Telegram notifications fire on positive replies + demos booked
+4. Weekly: generate KPI report
 
 ## Progress tracking
 
-Use TaskCreate/TaskUpdate to track each phase as tasks. Mark in_progress at start of phase, completed when done. Helps you and user see progress without you asking "done?" every 5 min.
+Use TaskCreate/TaskUpdate for each phase. Mark in_progress at start, completed when done.
 
 ## Common blockers + how to handle
 
 | Blocker | How you handle |
 |---|---|
-| User doesn't have Postgres installed | Link to installer, wait, verify via `psql --version` |
-| Apollo free tier too small | Tell user to upgrade Basic $49 — explain math (leads / credits / demos) |
-| Cloudflare domain search returns "premium price" | Try variant or skip that name; don't push premium domains |
-| n8n API credential creation fails schema validation | Fallback to UI creation (guide user through 3 clicks) |
-| Webhook 404 after activation | Likely missing `webhookId` on node — patch via PUT + add random UUID |
-| SMTP send fails auth | Re-check `.env` SMTP_PASS has no extra spaces, test with `curl` SMTP |
-| Gmail App Password unavailable | Account <24h old — user waits and retries |
-| DNS propagation slow | Wait 2-5 min, retry. Don't over-debug. |
+| User has no LinkedIn account for Engine B | User creates it manually (security - can't do via ext). Wait + proceed with other phases in parallel. |
+| Profile <500 connections + Engine A chosen | Recommend switching to Engine B OR doing 2 weeks organic warmup first |
+| HeyReach API key rejected | Check `HEYREACH_ACCOUNT_ID` is set correctly — most common cause |
+| LinkedHelper local HTTP API unreachable | User's LinkedHelper isn't running, or port 7337 blocked by Windows Firewall |
+| Apollo export has 0 LinkedIn URLs | Filter too narrow or Apollo plan doesn't include LinkedIn URLs — upgrade or adjust |
+| n8n webhook 404 | Workflow not activated, or `webhookId` missing on Webhook node |
+| Cal.com webhook doesn't fire | Cal.com webhook secret not set, or triggers not enabled |
+| Telegram bot doesn't post | Bot not added to the group, or TELEGRAM_CHAT_ID is user-id (need group-id: negative number) |
+| LinkedIn shows "restricted" mid-warmup | STOP all automation. Explain to user. Let account rest 7 days. Restart at week-1 limits. |
 
 ## When to pause and ask user
 
 Only pause when:
 - Credential needed (API key, password) — ask once, store in `.env`
-- Browser action needed that Chrome extension can't do (OAuth, 2FA, payment)
+- Browser action needed that Chrome extension can't do (OAuth, 2FA, payment, LinkedIn account creation, Chrome desktop app install)
 - Real user choice affecting outcome (template voice, ICP refinement)
-- Unrecoverable error (disk full, network down)
+- Unrecoverable error or LinkedIn restriction detected
 
 Otherwise: **keep going**. Update user with one-line progress every 5-10 min.
 
-## When to stop
-
-- All 13 phases complete
-- Smoke test passed
-- User has confirmed they got the test email + unsubscribe worked
-- Warmup started with internal tribe (if user ready) OR user explicitly says "fermiamoci qui, riprendiamo domani"
-
 ## Final handoff
 
-At end of setup, generate:
-1. **Credential summary** (password manager ready to copy)
-2. **`.env` file** (complete, in `D:\GitHub\<project>\.env`)
-3. **Sales handoff guide** for whoever operates daily (template: `templates/sales-onboarding-template.md` — customize with user's sender name, product, etc.)
-4. **Roadmap for next 4 weeks** (warmup days, production launch date)
+At end of setup:
+1. **Credential summary** for password manager
+2. **`.env` file** complete at `D:\GitHub\<project>\.env`
+3. **Roadmap for next 4-6 weeks** (warmup schedule, LIA ETA, production launch date)
+4. **KPI targets** for first 30 days based on user's volume goal
 
-Tell the user clearly what they have, what they still need to do (email lawyer for LIA, maybe upgrade SaaS tiers), and when to expect first real prospects.
-
-Done.
+Tell user:
+- What they have
+- What's still blocking (LIA if not signed)
+- Expected first real-prospect outreach day
+- Telegram will start chirping when replies come in
