@@ -1,86 +1,94 @@
 {
-  "name": "BL-076 / 3 — Reply Handler",
+  "name": "LI-Outreach / 3 — Reply Handler (Webhook)",
+  "_comment": "Receives webhooks from HeyReach or LinkedHelper when a reply/connection-accept/opt-out happens. Normalizes payload, classifies, logs to li_replies, and notifies Telegram/Slack for positive replies.",
   "nodes": [
     {
       "parameters": {
-        "protocol": "imap",
-        "options": { "allowUnauthorizedCerts": false, "customEmailConfig": "[\"UNSEEN\"]" }
+        "httpMethod": "POST",
+        "path": "linkedin-reply",
+        "responseMode": "lastNode",
+        "options": {}
       },
-      "name": "IMAP — new replies",
-      "type": "n8n-nodes-base.emailReadImap",
+      "name": "Webhook — LI event in",
+      "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 300],
-      "credentials": { "imap": { "id": "IMAP_CRED_ID", "name": "BA Inbox" } }
+      "position": [200, 300],
+      "webhookId": "linkedin-reply-webhook"
     },
     {
       "parameters": {
-        "functionCode": "// Classify reply with simple keyword rules. Replace with LLM call later.\nconst body = (items[0].json.text || items[0].json.html || '').toLowerCase();\nconst from  = items[0].json.from?.value?.[0]?.address || '';\nconst inReplyTo = items[0].json.headers?.['in-reply-to'] || items[0].json.headers?.references || null;\n\nconst rules = [\n  { type: 'unsubscribe',  re: /\\b(unsubscribe|remove me|opt[- ]?out|stop emailing|do not contact)\\b/ },\n  { type: 'autoreply',    re: /\\b(out of office|ooo|on leave|annual leave|vacation|maternity|paternity)\\b/ },\n  { type: 'interested',   re: /\\b(interested|sounds good|let'?s chat|book|calendar|demo|call this week)\\b/ },\n  { type: 'objection',    re: /\\b(too expensive|price|budget|already use|happy with|not now|maybe later|next quarter)\\b/ },\n  { type: 'not_interested', re: /\\b(not interested|no thanks|pass|not a fit|not relevant)\\b/ },\n];\nlet reply_type = 'other';\nfor (const r of rules) if (r.re.test(body)) { reply_type = r.type; break; }\n\nconst sentiment = reply_type === 'interested' ? 'positive'\n  : reply_type === 'not_interested' || reply_type === 'unsubscribe' ? 'negative'\n  : 'neutral';\n\nreturn [{ json: { from, body, in_reply_to: inReplyTo, reply_type, sentiment } }];"
+        "functionCode": "// Normalize payload across HeyReach and LinkedHelper shapes into a unified event.\n// Detect engine by presence of key fields.\nconst raw = items[0].json.body || items[0].json;\n\nlet engine, event_type, sender_url, sender_public_id, body_text, conversation_id, engine_message_id;\n\nif (raw.eventType) {\n  // HeyReach shape\n  engine = 'heyreach';\n  event_type = raw.eventType; // e.g. 'MESSAGE_RECEIVED', 'CONNECTION_ACCEPTED'\n  sender_url = raw.lead?.profileUrl || raw.profileUrl || null;\n  sender_public_id = raw.lead?.publicIdentifier || null;\n  body_text = raw.message?.text || raw.messageBody || '';\n  conversation_id = raw.conversationId || raw.threadId || null;\n  engine_message_id = raw.messageId || null;\n} else if (raw.event || raw.actionType) {\n  // LinkedHelper shape\n  engine = 'linkedhelper';\n  event_type = raw.event || raw.actionType; // e.g. 'new_message', 'invitation_accepted'\n  sender_url = raw.profile?.url || raw.profileUrl || null;\n  sender_public_id = raw.profile?.publicId || null;\n  body_text = raw.text || raw.messageText || '';\n  conversation_id = raw.conversationId || null;\n  engine_message_id = raw.id || null;\n} else {\n  return [{ json: { error: 'unknown payload shape', raw } }];\n}\n\n// Classify reply (same keyword rules as email sibling, adapted for DM brevity)\nconst body_lower = (body_text || '').toLowerCase();\nconst rules = [\n  { type: 'opt_out',         re: /\\b(stop|unsubscribe|remove|opt[- ]?out|do not contact|non contattarmi|rimuovi)\\b/ },\n  { type: 'auto_reply',      re: /\\b(out of office|ooo|on leave|vacation|ferie|assente)\\b/ },\n  { type: 'interested',      re: /\\b(interested|interessato|sounds good|let'?s chat|book|calendar|demo|call|fissa|prenotiamo)\\b/ },\n  { type: 'objection',       re: /\\b(too expensive|price|budget|already use|happy with|not now|maybe later|troppo caro|ne parliamo poi)\\b/ },\n  { type: 'not_interested',  re: /\\b(not interested|no thanks|pass|not a fit|not relevant|non interessato|non fa per me)\\b/ }\n];\nlet reply_type = 'other';\nif (event_type && event_type.toLowerCase().includes('connection') && event_type.toLowerCase().includes('accept')) {\n  reply_type = 'connection_accept';\n} else {\n  for (const r of rules) if (r.re.test(body_lower)) { reply_type = r.type; break; }\n}\n\nconst sentiment = reply_type === 'interested' ? 'positive'\n  : (reply_type === 'not_interested' || reply_type === 'opt_out') ? 'negative'\n  : 'neutral';\n\nreturn [{ json: { engine, event_type, sender_url, sender_public_id, body_text, conversation_id, engine_message_id, reply_type, sentiment, raw } }];"
       },
-      "name": "Function — classify reply",
+      "name": "Function — normalize + classify",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
-      "position": [460, 300]
+      "position": [420, 300]
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH lead AS (SELECT id FROM leads WHERE lower(email) = lower($1)), email AS (SELECT id FROM campaign_emails WHERE message_id = $2) INSERT INTO email_replies (email_id, lead_id, reply_content, reply_type, sentiment) SELECT email.id, lead.id, $3, $4, $5 FROM lead LEFT JOIN email ON true RETURNING id, lead_id, reply_type;",
-        "additionalFields": { "queryParams": "={{$json.from}},={{$json.in_reply_to}},={{$json.body}},={{$json.reply_type}},={{$json.sentiment}}" }
+        "query": "WITH lead AS (SELECT id FROM leads WHERE lower(linkedin_url) = lower($1) OR lower(linkedin_public_id) = lower($2) LIMIT 1), msg AS (SELECT id FROM campaign_messages WHERE engine_conversation_id = $3 OR engine_message_id = $4 LIMIT 1) INSERT INTO li_replies (message_id, lead_id, reply_content, reply_type, sentiment, raw_webhook_payload) SELECT msg.id, lead.id, $5, $6, $7, $8::jsonb FROM lead LEFT JOIN msg ON true RETURNING id, lead_id, reply_type;",
+        "additionalFields": { "queryParams": "={{$json.sender_url}},={{$json.sender_public_id}},={{$json.conversation_id}},={{$json.engine_message_id}},={{$json.body_text}},={{$json.reply_type}},={{$json.sentiment}},={{JSON.stringify($json.raw)}}" }
       },
       "name": "Postgres — log reply",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
-      "position": [680, 300],
-      "credentials": { "postgres": { "id": "PG_CRED_ID", "name": "BA Postgres" } }
+      "position": [640, 300],
+      "credentials": { "postgres": { "id": "PG_CRED_ID", "name": "Outreach Postgres" } }
     },
     {
       "parameters": {
-        "conditions": { "string": [ { "value1": "={{$json.reply_type}}", "operation": "equal", "value2": "unsubscribe" } ] }
+        "conditions": { "string": [ { "value1": "={{$json.reply_type}}", "operation": "equal", "value2": "opt_out" } ] }
       },
-      "name": "IF unsubscribe",
+      "name": "IF opt_out",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [900, 300]
+      "position": [860, 220]
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO suppression_list (email, reason, source) VALUES ($1, 'unsubscribed', 'reply-handler') ON CONFLICT (lower(email)) WHERE email IS NOT NULL DO NOTHING;",
-        "additionalFields": { "queryParams": "={{$json.from}}" }
+        "query": "INSERT INTO suppression_list (linkedin_url, linkedin_public_id, reason, source) VALUES ($1, $2, 'opt_out_reply', $3) ON CONFLICT DO NOTHING;",
+        "additionalFields": { "queryParams": "={{$node['Function — normalize + classify'].json.sender_url}},={{$node['Function — normalize + classify'].json.sender_public_id}},={{$node['Function — normalize + classify'].json.engine + '_webhook'}}" }
       },
       "name": "Postgres — add to suppression",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
-      "position": [1120, 220],
-      "credentials": { "postgres": { "id": "PG_CRED_ID", "name": "BA Postgres" } }
+      "position": [1080, 160],
+      "credentials": { "postgres": { "id": "PG_CRED_ID", "name": "Outreach Postgres" } }
     },
     {
       "parameters": {
         "conditions": { "string": [ { "value1": "={{$json.reply_type}}", "operation": "equal", "value2": "interested" } ] }
       },
-      "name": "IF interested → notify human",
+      "name": "IF interested",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [1120, 380]
+      "position": [860, 380]
     },
     {
       "parameters": {
-        "channel": "#sales-replies",
-        "text": "=:rotating_light: Positive reply from {{$json.from}}\\n\\n>>> {{$json.body.slice(0,400)}}"
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{$env.TELEGRAM_BOT_TOKEN}}/sendMessage",
+        "sendBody": true,
+        "bodyParameters": { "parameters": [
+          { "name": "chat_id", "value": "={{$env.TELEGRAM_CHAT_ID}}" },
+          { "name": "parse_mode", "value": "Markdown" },
+          { "name": "text", "value": "=🟢 *Positive LinkedIn reply*\\n\\nFrom: {{$node['Function — normalize + classify'].json.sender_url}}\\n\\n> {{$node['Function — normalize + classify'].json.body_text.slice(0,400)}}" }
+        ] }
       },
-      "name": "Slack — notify",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2,
-      "position": [1340, 380],
-      "credentials": { "slackApi": { "id": "SLACK_CRED_ID", "name": "BA Slack" } }
+      "name": "Telegram — notify",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1080, 380]
     }
   ],
   "connections": {
-    "IMAP — new replies":     { "main": [[{ "node": "Function — classify reply", "type": "main", "index": 0 }]] },
-    "Function — classify reply": { "main": [[{ "node": "Postgres — log reply", "type": "main", "index": 0 }]] },
-    "Postgres — log reply":   { "main": [[{ "node": "IF unsubscribe", "type": "main", "index": 0 }, { "node": "IF interested → notify human", "type": "main", "index": 0 }]] },
-    "IF unsubscribe":         { "main": [[{ "node": "Postgres — add to suppression", "type": "main", "index": 0 }], []] },
-    "IF interested → notify human": { "main": [[{ "node": "Slack — notify", "type": "main", "index": 0 }], []] }
+    "Webhook — LI event in":          { "main": [[{ "node": "Function — normalize + classify", "type": "main", "index": 0 }]] },
+    "Function — normalize + classify":{ "main": [[{ "node": "Postgres — log reply", "type": "main", "index": 0 }]] },
+    "Postgres — log reply":           { "main": [[{ "node": "IF opt_out", "type": "main", "index": 0 }, { "node": "IF interested", "type": "main", "index": 0 }]] },
+    "IF opt_out":                     { "main": [[{ "node": "Postgres — add to suppression", "type": "main", "index": 0 }], []] },
+    "IF interested":                  { "main": [[{ "node": "Telegram — notify", "type": "main", "index": 0 }], []] }
   },
   "settings": { "executionOrder": "v1" }
 }

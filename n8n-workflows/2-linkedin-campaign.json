@@ -1,0 +1,160 @@
+{
+  "name": "LI-Outreach / 2 — LinkedIn Campaign",
+  "_comment": "Branches on $env.LINKEDIN_ENGINE to route sends to HeyReach (cloud API) or LinkedHelper 2 (local HTTP). Respects daily rate limits from rate_limit_log. Picks the next-due touch_type per lead (connection_request -> first_message -> follow_up_1 -> follow_up_2).",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [ { "field": "minutes", "minutesInterval": 30 } ] }
+      },
+      "name": "Cron (every 30 min)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Gate: skip if outside send hours or over rate limit.\nconst h = new Date().getHours();\nconst start = parseInt($env.SEND_HOUR_START || '9');\nconst end = parseInt($env.SEND_HOUR_END || '18');\nif (h < start || h >= end) {\n  return []; // empty -> downstream does nothing\n}\nreturn [{ json: { ok: true } }];"
+      },
+      "name": "Function — send-hour gate",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [400, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COALESCE(SUM(connections_sent),0) AS conn_today, COALESCE(SUM(messages_sent),0) AS msgs_today FROM rate_limit_log WHERE campaign_id = $1 AND day = CURRENT_DATE;",
+        "additionalFields": { "queryParams": "={{$env.ACTIVE_CAMPAIGN_ID}}" }
+      },
+      "name": "Postgres — today's counts",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [600, 300],
+      "credentials": { "postgres": { "id": "PG_CRED_ID", "name": "Outreach Postgres" } }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Decide what budget is left today\nconst row = items[0].json;\nconst connLimit = parseInt($env.DAILY_LI_CONNECTION_LIMIT || '20');\nconst msgLimit  = parseInt($env.DAILY_LI_MESSAGE_LIMIT || '40');\nconst connLeft = Math.max(0, connLimit - (row.conn_today || 0));\nconst msgLeft  = Math.max(0, msgLimit  - (row.msgs_today || 0));\nif (connLeft === 0 && msgLeft === 0) return [];\nreturn [{ json: { connLeft, msgLeft } }];"
+      },
+      "name": "Function — budget left",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [800, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH next_due AS (SELECT l.id AS lead_id, l.linkedin_url, l.contact_name, l.title, l.company_name, CASE WHEN NOT EXISTS (SELECT 1 FROM campaign_messages cm WHERE cm.lead_id = l.id AND cm.campaign_id = $1) THEN 'connection_request' WHEN EXISTS (SELECT 1 FROM campaign_messages cm WHERE cm.lead_id = l.id AND cm.campaign_id = $1 AND cm.touch_type='connection_request' AND cm.status='connection_accepted') AND NOT EXISTS (SELECT 1 FROM campaign_messages cm WHERE cm.lead_id = l.id AND cm.campaign_id = $1 AND cm.touch_type='first_message') THEN 'first_message' WHEN EXISTS (SELECT 1 FROM campaign_messages cm WHERE cm.lead_id = l.id AND cm.campaign_id = $1 AND cm.touch_type='first_message' AND cm.sent_at < NOW() - INTERVAL '4 days') AND NOT EXISTS (SELECT 1 FROM campaign_messages cm WHERE cm.lead_id = l.id AND cm.campaign_id = $1 AND cm.touch_type='follow_up_1') AND NOT EXISTS (SELECT 1 FROM li_replies r WHERE r.lead_id = l.id) THEN 'follow_up_1' WHEN EXISTS (SELECT 1 FROM campaign_messages cm WHERE cm.lead_id = l.id AND cm.campaign_id = $1 AND cm.touch_type='follow_up_1' AND cm.sent_at < NOW() - INTERVAL '7 days') AND NOT EXISTS (SELECT 1 FROM campaign_messages cm WHERE cm.lead_id = l.id AND cm.campaign_id = $1 AND cm.touch_type='follow_up_2') AND NOT EXISTS (SELECT 1 FROM li_replies r WHERE r.lead_id = l.id) THEN 'follow_up_2' ELSE NULL END AS next_touch FROM contactable_leads l) SELECT * FROM next_due WHERE next_touch IS NOT NULL ORDER BY RANDOM() LIMIT 5;",
+        "additionalFields": { "queryParams": "={{$env.ACTIVE_CAMPAIGN_ID}}" }
+      },
+      "name": "Postgres — fetch next touches",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1000, 300],
+      "credentials": { "postgres": { "id": "PG_CRED_ID", "name": "Outreach Postgres" } }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Render template for this touch_type, replacing {{placeholders}} from lead data + .env.\n// Uses fs to read templates/linkedin-templates/<touch_type>.txt\nconst fs = require('fs');\nconst path = require('path');\nconst dir = $env.TEMPLATE_DIR;\nconst out = [];\nfor (const it of items) {\n  const touch = it.json.next_touch;\n  const fname = touch === 'connection_request' ? 'connection-note.txt'\n             : touch === 'first_message'       ? 'first-message.txt'\n             : touch === 'follow_up_1'         ? 'follow-up-1.txt'\n             : touch === 'follow_up_2'         ? 'follow-up-2.txt'\n             : null;\n  if (!fname) continue;\n  const raw = fs.readFileSync(path.join(dir, fname), 'utf8');\n  const firstName = (it.json.contact_name || '').split(' ')[0];\n  const rendered = raw\n    .replace(/\\{\\{firstName\\}\\}/g, firstName)\n    .replace(/\\{\\{fullName\\}\\}/g, it.json.contact_name || '')\n    .replace(/\\{\\{title\\}\\}/g, it.json.title || '')\n    .replace(/\\{\\{company\\}\\}/g, it.json.company_name || '')\n    .replace(/\\{\\{senderFirstName\\}\\}/g, $env.SENDER_FIRST_NAME || '')\n    .replace(/\\{\\{senderFullName\\}\\}/g, $env.SENDER_FULL_NAME || '')\n    .replace(/\\{\\{senderTitle\\}\\}/g, $env.SENDER_TITLE || '')\n    .replace(/\\{\\{senderCompany\\}\\}/g, $env.SENDER_COMPANY || '')\n    .replace(/\\{\\{calendarUrl\\}\\}/g, $env.SENDER_CALENDAR_URL || '')\n    .replace(/\\{\\{productPitch\\}\\}/g, $env.PRODUCT_PITCH || '')\n    .replace(/\\{\\{connectionNoteHook\\}\\}/g, $env.CONNECTION_NOTE_HOOK || '')\n    .replace(/\\{\\{firstMessageHook\\}\\}/g, $env.FIRST_MESSAGE_HOOK || '')\n    .replace(/\\{\\{privacyNoticeUrl\\}\\}/g, $env.PRIVACY_NOTICE_URL || '');\n  out.push({ json: { ...it.json, rendered_body: rendered, template_used: fname } });\n}\nreturn out;"
+      },
+      "name": "Function — render template",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "conditions": { "string": [ { "value1": "={{$env.LINKEDIN_ENGINE}}", "operation": "equal", "value2": "heyreach" } ] }
+      },
+      "name": "IF engine == heyreach",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1400, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.heyreach.io/api/public/MyNetwork/SendMessage",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "X-API-KEY", "value": "={{$env.HEYREACH_API_KEY}}" },
+          { "name": "Content-Type", "value": "application/json" }
+        ] },
+        "sendBody": true,
+        "bodyParameters": { "parameters": [
+          { "name": "accountId", "value": "={{$env.HEYREACH_ACCOUNT_ID}}" },
+          { "name": "targetProfileUrl", "value": "={{$json.linkedin_url}}" },
+          { "name": "messageType", "value": "={{$json.next_touch === 'connection_request' ? 'CONNECTION' : 'MESSAGE'}}" },
+          { "name": "body", "value": "={{$json.rendered_body}}" }
+        ] },
+        "options": { "timeout": 20000 }
+      },
+      "name": "HTTP — HeyReach send",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1620, 220]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.LINKEDHELPER_LOCAL_URL}}/api/outreach",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "X-API-KEY", "value": "={{$env.LINKEDHELPER_API_KEY}}" },
+          { "name": "Content-Type", "value": "application/json" }
+        ] },
+        "sendBody": true,
+        "bodyParameters": { "parameters": [
+          { "name": "profileUrl", "value": "={{$json.linkedin_url}}" },
+          { "name": "action", "value": "={{$json.next_touch === 'connection_request' ? 'CONNECT_WITH_NOTE' : 'SEND_MESSAGE'}}" },
+          { "name": "body", "value": "={{$json.rendered_body}}" }
+        ] },
+        "options": { "timeout": 30000 }
+      },
+      "name": "HTTP — LinkedHelper send",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1620, 380]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO campaign_messages (campaign_id, lead_id, touch_type, template_used, message_body, sent_at, status, engine_message_id) VALUES ($1, $2, $3, $4, $5, NOW(), 'sent', $6) ON CONFLICT (campaign_id, lead_id, touch_type) DO UPDATE SET sent_at = NOW(), status = 'sent', engine_message_id = EXCLUDED.engine_message_id RETURNING id;",
+        "additionalFields": { "queryParams": "={{$env.ACTIVE_CAMPAIGN_ID}},={{$json.lead_id}},={{$json.next_touch}},={{$json.template_used}},={{$json.rendered_body}},={{$json.id || $json.messageId || ''}}" }
+      },
+      "name": "Postgres — record send",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1840, 300],
+      "credentials": { "postgres": { "id": "PG_CRED_ID", "name": "Outreach Postgres" } }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO rate_limit_log (campaign_id, day, connections_sent, messages_sent) VALUES ($1, CURRENT_DATE, CASE WHEN $2 = 'connection_request' THEN 1 ELSE 0 END, CASE WHEN $2 <> 'connection_request' THEN 1 ELSE 0 END) ON CONFLICT (campaign_id, day) DO UPDATE SET connections_sent = rate_limit_log.connections_sent + CASE WHEN $2 = 'connection_request' THEN 1 ELSE 0 END, messages_sent = rate_limit_log.messages_sent + CASE WHEN $2 <> 'connection_request' THEN 1 ELSE 0 END;",
+        "additionalFields": { "queryParams": "={{$env.ACTIVE_CAMPAIGN_ID}},={{$json.next_touch}}" }
+      },
+      "name": "Postgres — bump rate limit",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [2060, 300],
+      "credentials": { "postgres": { "id": "PG_CRED_ID", "name": "Outreach Postgres" } }
+    }
+  ],
+  "connections": {
+    "Cron (every 30 min)":    { "main": [[{ "node": "Function — send-hour gate", "type": "main", "index": 0 }]] },
+    "Function — send-hour gate": { "main": [[{ "node": "Postgres — today's counts", "type": "main", "index": 0 }]] },
+    "Postgres — today's counts": { "main": [[{ "node": "Function — budget left", "type": "main", "index": 0 }]] },
+    "Function — budget left": { "main": [[{ "node": "Postgres — fetch next touches", "type": "main", "index": 0 }]] },
+    "Postgres — fetch next touches": { "main": [[{ "node": "Function — render template", "type": "main", "index": 0 }]] },
+    "Function — render template": { "main": [[{ "node": "IF engine == heyreach", "type": "main", "index": 0 }]] },
+    "IF engine == heyreach": { "main": [
+      [{ "node": "HTTP — HeyReach send", "type": "main", "index": 0 }],
+      [{ "node": "HTTP — LinkedHelper send", "type": "main", "index": 0 }]
+    ] },
+    "HTTP — HeyReach send":     { "main": [[{ "node": "Postgres — record send", "type": "main", "index": 0 }]] },
+    "HTTP — LinkedHelper send": { "main": [[{ "node": "Postgres — record send", "type": "main", "index": 0 }]] },
+    "Postgres — record send":   { "main": [[{ "node": "Postgres — bump rate limit", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}
