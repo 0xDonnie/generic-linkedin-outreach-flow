@@ -2,69 +2,64 @@
 
 Paste into Claude Chrome Extension on https://dash.cloudflare.com.
 
+For LinkedIn outreach we only need ONE domain — the privacy notice + opt-out landing page. Unlike the email sibling (which needs 3-5 outbound domains with DKIM/SPF/DMARC), LinkedIn routing uses LinkedIn's own infrastructure. So this prompt buys 1 domain only.
+
+Skip entirely if user already has a usable domain (`{{EXISTING_DOMAIN}}`).
+
 ---
 
 ```
-I need to purchase {{DOMAIN_COUNT}} new outbound domains on Cloudflare Registrar for cold email. I'm logged in.
+I need to purchase 1 domain on Cloudflare Registrar for a landing page (privacy notice + opt-out form). I'm logged in.
 
 CONTEXT:
-- Purpose: outbound email domains (separate from main brand, to protect brand reputation)
-- Target pricing: ~$10/year per .com domain
-- Do NOT buy .xyz, .info, .biz, .top, .click, .link — bad spam reputation
+- Purpose: host GDPR privacy notice + opt-out form at {{PRIVACY_SUBDOMAIN}}.(domain)
+- Target pricing: ~$10/year for .com
 - Acceptable TLDs: .com (best), .net, .org, .eu
+- AVOID: .xyz, .info, .biz, .top, .click, .link (bad trust signal on landing page)
 
-SUGGESTED DOMAINS (in priority order — first {{DOMAIN_COUNT}} that are available):
+SUGGESTED DOMAINS (pick the first available):
 {{DOMAIN_SUGGESTIONS_LIST}}
 
 Example for a compliance SaaS product:
-- ba-compliance.com
-- ba-onchain.com
-- ba-checks.com
-- ba-monitor.com
-- ba-tools.com
+- {{COMPANY_SLUG}}-privacy.com
+- {{COMPANY_SLUG}}-info.com
+- {{COMPANY_SLUG}}-contact.com
 
 PROCEDURE:
 
 STEP 1 — Navigate to Registrar
 - Sidebar → Domain Registration → Register Domains
-- Or direct URL: https://dash.cloudflare.com/?to=/:account/domains/register
+- Or: https://dash.cloudflare.com/?to=/:account/domains/register
 
-STEP 2 — Search domains
-- For each domain in the list above, search
-- Check it's:
+STEP 2 — Search and select one
+- Try each domain from the suggestions above in order
+- Pick the FIRST one that is:
   (a) available
-  (b) NOT marked as "Premium" (which means $200+/year, skip)
+  (b) NOT "Premium" (those are $200+/year, skip)
   (c) price is ~$10-15/year
 
-STEP 3 — Add to cart
-- For available non-premium domains, click "Register" or "Add to cart"
-- Skip any domain that's premium or over $15/year
+STEP 3 — Add to cart + checkout
+- Add just 1 domain
+- Cart should show 1 domain at ~$10-15/year
+- FERMATI at payment step — confirm with user before committing
 
-STEP 4 — Checkout
-- Cart should show {{DOMAIN_COUNT}} domains totaling ~${{EXPECTED_TOTAL}}
-- Proceed to checkout
-- FERMATI at payment step — I need to confirm with user before committing payment
-
-STEP 5 — After user confirms payment
+STEP 4 — After user confirms payment
 - Complete purchase
-- Verify all {{DOMAIN_COUNT}} domains appear in Registered Domains list
-- Report back:
-  - Domains purchased with actual registered names
-  - Actual total paid
-  - Any domain that was skipped (unavailable or premium)
+- Verify domain appears in Registered Domains
+- Report back: actual domain name purchased, total paid
 
 IMPORTANT:
-- Don't buy any domain add-on ("premium DNS", "SSL", "privacy protection" — all unnecessary, CF has them free/included)
-- Don't enable "Marketplace" features
-- Just the domain registrations, nothing else
-
-If user says "lo sto pagando tu prendi gli screenshots" proceed. Otherwise pause at checkout.
+- No add-ons (no "Premium DNS", no "privacy protection" — CF has those free/included)
+- No marketplace features
 
 Procedi con STEP 1.
 ```
 
 ---
 
-## After domains purchased
+## After domain purchased
 
-Claude Code captures the ACTUAL registered domain names (may differ from suggestions if some were unavailable) into `intake/answers.md` → `outbound_domains[]`. All subsequent prompts reference that list.
+Claude Code captures the actual registered domain name into `intake/answers.md` → `privacy_landing_domain`, and uses it for:
+- `PRIVACY_NOTICE_URL=https://{{PRIVACY_SUBDOMAIN}}.(domain)/privacy`
+- `OPTOUT_FORM_URL=https://{{PRIVACY_SUBDOMAIN}}.(domain)/opt-out`
+- Cloudflare Pages deployment of the privacy notice HTML + opt-out form

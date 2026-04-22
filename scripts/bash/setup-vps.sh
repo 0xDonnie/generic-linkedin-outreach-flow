@@ -8,7 +8,8 @@
 
 set -e
 
-echo "=== BA Cold-mailing VPS Setup ==="
+echo "=== Generic LinkedIn Outreach Flow — VPS Setup (Engine A / HeyReach only) ==="
+echo "Note: do NOT use this for Engine B (LinkedHelper) — that runs on user's PC with Chrome extension"
 echo ""
 
 # ── Update system ────────────────────────────────────────────────────────────

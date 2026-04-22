@@ -70,7 +70,7 @@ Proceed with export:
 
 2. Select all {{TOTAL_PEOPLE}} people
 
-3. Export → Verified Emails Only, Catch-all OFF, Personal emails reveal OFF
+3. Export → Include LinkedIn Profile URL column (CRITICAL for this flow). Verified Emails Only, Catch-all OFF, Personal emails reveal OFF. Filter rows where person_linkedin_url is present (drop rows without LinkedIn URL — we can't outreach them on LinkedIn).
 
 4. Confirm credit consumption estimate: ~{{EXPECTED_CREDITS}} credits ({{PERCENT_OF_BUDGET}}% of monthly budget)
 
